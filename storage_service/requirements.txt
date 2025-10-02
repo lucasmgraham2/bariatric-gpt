@@ -2,5 +2,5 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg2-binary
-cryptography
-python-jose
+passlib[bcrypt]
+email-validator
