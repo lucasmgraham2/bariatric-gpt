@@ -36,7 +36,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/  # Commented out to allow Flutter lib/ directory
 lib64/
 parts/
 sdist/
@@ -46,7 +46,7 @@ wheels/
 .installed.cfg
 *.egg
 
-# Flutter
+# Flutter - Keep build artifacts ignored but allow source code
 flutter_frontend/.dart_tool/
 flutter_frontend/.flutter-plugins
 flutter_frontend/.flutter-plugins-dependencies
@@ -55,6 +55,10 @@ flutter_frontend/build/
 flutter_frontend/ios/.symlinks/
 flutter_frontend/android/.gradle
 flutter_frontend/android/app/build/
+# Allow Flutter source code:
+!flutter_frontend/lib/
+!flutter_frontend/lib/**
+!flutter_frontend/test/
 
 # OS
 .DS_Store
