@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/screens/login_screen.dart';
+import 'package:bariatric_gpt/screens/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -136,8 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               Icons.settings,
                               'Configure your preferences',
                               () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Feature coming soon!')),
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
                                 );
                               },
                             ),

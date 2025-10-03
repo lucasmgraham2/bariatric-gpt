@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:bariatric_gpt/providers/theme_provider.dart';
 import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/screens/login_screen.dart';
 import 'package:bariatric_gpt/screens/home_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const MyApp(),
+    ),);
 }
 
 class MyApp extends StatelessWidget {
@@ -12,12 +17,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return MaterialApp(
       title: 'Bariatric GPT',
+      // 3. Set the themeMode, theme, and darkTheme properties
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        brightness: Brightness.light,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      darkTheme: ThemeData(
+        primarySwatch: Colors.blue,
+        brightness: Brightness.dark,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      // 4. Use your existing AuthWrapper as the home widget
       home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
@@ -44,10 +59,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _checkAuthStatus() async {
     final isLoggedIn = await _authService.isLoggedIn();
-    setState(() {
-      _isLoggedIn = isLoggedIn;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = isLoggedIn;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
