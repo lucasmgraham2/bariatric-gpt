@@ -3,7 +3,6 @@
 // Add your widget tests here as you develop new features.
 // For now, this file contains basic smoke tests.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bariatric_gpt/main.dart';

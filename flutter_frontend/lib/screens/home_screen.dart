@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/screens/login_screen.dart';
 import 'package:bariatric_gpt/screens/settings_screen.dart';
+import 'package:bariatric_gpt/screens/ai_assistant_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -117,8 +118,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               Icons.psychology,
                               'Get AI-powered insights',
                               () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Feature coming soon!')),
+                                // ScaffoldMessenger.of(context).showSnackBar(
+                                //   const SnackBar(content: Text('Feature coming soon!')),
+                                // );
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (context) => const AiAssistantScreen()),
                                 );
                               },
                             ),

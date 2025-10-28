@@ -9,6 +9,7 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 STORAGE_URL = "http://localhost:8002"
+LLM_SERVICE_URL = "http://localhost:8001"
 tokens = {}
 
 class UserRegister(BaseModel):
@@ -19,6 +20,10 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class ApiChatRequest(BaseModel): # NEW: Model for chat requests from Flutter
+    message: str
+    patient_id: Optional[str] = None
 
 @app.post("/auth/register")
 async def register(user_data: UserRegister):
@@ -85,6 +90,50 @@ async def logout(authorization: Optional[str] = Header(None)):
         pass
     
     return {"message": "Logout successful"}
+
+@app.post("/chat")
+async def chat_with_agent(chat_data: ApiChatRequest): # MODIFIED: Removed the Depends
+    """
+    Unprotected endpoint to chat with the LLM agent graph.
+    It takes the user's message and user_id directly from the request body
+    and forwards them to the LLM service.
+    """
+    
+    # This is the payload your LangGraph service expects
+    llm_payload = {
+        "message": chat_data.message,
+        "user_id": chat_data.user_id, # MODIFIED: Get user_id from the request body
+        "patient_id": chat_data.patient_id
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            # Forward the request to the LLM Service
+            # Use a long timeout, as agent graphs can be slow
+            response = await client.post(
+                f"{LLM_SERVICE_URL}/invoke_agent_graph", 
+                json=llm_payload,
+                timeout=300.0 
+            )
+            
+            # Propagate errors from the LLM service
+            response.raise_for_status() 
+            
+            # Return the LLM's final response to the Flutter app
+            return response.json()
+        
+        except httpx.ConnectError:
+            raise HTTPException(status_code=503, detail="LLM service is unavailable")
+        except httpx.ReadTimeout:
+            raise HTTPException(status_code=504, detail="Request to LLM service timed out")
+        except httpx.HTTPStatusError as e:
+            # Pass through the error from the downstream service if possible
+            if e.response.status_code != 500:
+                try:
+                    return e.response.json()
+                except: # Handle cases where error response isn't valid JSON
+                    raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+            raise HTTPException(status_code=500, detail="An error occurred in the LLM service")
 
 if __name__ == "__main__":
     import uvicorn

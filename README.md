@@ -35,6 +35,9 @@ python api_gateway/main_simple.py
 # Terminal 3 - Flutter App
 cd flutter_frontend
 flutter run
+
+# Terminal 4 - LLM Serivce
+uvicorn llm_service.app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 ### 3. Test the Setup

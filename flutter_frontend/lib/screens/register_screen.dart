@@ -3,7 +3,7 @@ import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/screens/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
