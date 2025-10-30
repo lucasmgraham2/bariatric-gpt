@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:bariatric_gpt/services/ai_service.dart';
 
 // A simple model for a chat message
 class ChatMessage {
@@ -18,6 +19,7 @@ class AiAssistantScreen extends StatefulWidget {
 class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final AiService _aiService = AiService();
   final List<ChatMessage> _messages = [];
   bool _isTyping = false;
 
@@ -29,7 +31,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final text = _textController.text;
+    final text = _textController.text.trim();
     if (text.isEmpty) return;
 
     // Add user message to list
@@ -41,15 +43,19 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _textController.clear();
     _scrollToBottom();
 
-    // --- Simulate AI Response ---
-    // TODO: Replace this with your actual API call to your AI backend
-    await Future.delayed(const Duration(seconds: 2));
-    const aiResponse = 'This is a simulated response from the AI assistant. '
-        'You would replace this logic with a real API call.';
+    // Call AI service (patient ID will be linked to user credentials later)
+    final result = await _aiService.sendMessage(message: text);
 
     setState(() {
-      _messages.add(ChatMessage(text: aiResponse, isUser: false));
       _isTyping = false;
+      if (result['success']) {
+        _messages.add(ChatMessage(text: result['response'], isUser: false));
+      } else {
+        _messages.add(ChatMessage(
+          text: '❌ Error: ${result['error']}',
+          isUser: false,
+        ));
+      }
     });
     _scrollToBottom();
   }
@@ -156,7 +162,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         left: 16,
         right: 8,
         top: 8,
-        bottom: 8 + MediaQuery.of(context).padding.bottom, // For safe area
+        bottom: 8 + MediaQuery.of(context).padding.bottom,
       ),
       child: Row(
         children: [
@@ -165,7 +171,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               controller: _textController,
               onSubmitted: (_) => _sendMessage(),
               decoration: const InputDecoration(
-                hintText: 'Type your message...',
+                hintText: 'Ask about diet, recovery, or medical questions...',
                 border: InputBorder.none,
                 filled: false,
               ),

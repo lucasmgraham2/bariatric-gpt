@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, text
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, Date, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel, EmailStr
+from typing import Optional
+from datetime import date
 import hashlib
 import secrets
 import os
@@ -23,6 +25,19 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
 
+# Patient table (for demo purposes)
+class Patient(Base):
+    __tablename__ = "patients"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    age = Column(Integer)
+    surgery_type = Column(String)
+    surgery_date = Column(Date)
+    current_weight = Column(Float)
+    starting_weight = Column(Float)
+    bmi = Column(Float)
+    status = Column(String)
+
 # Request/Response models
 class UserCreate(BaseModel):
     email: EmailStr
@@ -38,6 +53,20 @@ class UserResponse(BaseModel):
     email: str
     username: str
     is_active: bool
+    
+    class Config:
+        from_attributes = True
+
+class PatientResponse(BaseModel):
+    id: int
+    name: str
+    age: Optional[int]
+    surgery_type: Optional[str]
+    surgery_date: Optional[date]
+    current_weight: Optional[float]
+    starting_weight: Optional[float]
+    bmi: Optional[float]
+    status: Optional[str]
     
     class Config:
         from_attributes = True
@@ -151,6 +180,18 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@app.get("/patients/{patient_id}", response_model=PatientResponse)
+def get_patient(patient_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve patient data by patient ID.
+    Used by the AI agents to fetch patient information.
+    """
+    print(f"Fetching patient data for ID: {patient_id}")
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return patient
 
 if __name__ == "__main__":
     import uvicorn

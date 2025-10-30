@@ -2,5 +2,8 @@ fastapi
 uvicorn
 httpx
 langchain
-langgraph
+langchain-core
 langchain-community
+langchain-ollama
+langgraph
+psycopg2-binary

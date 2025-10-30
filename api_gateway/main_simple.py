@@ -21,7 +21,7 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
-class ApiChatRequest(BaseModel): # NEW: Model for chat requests from Flutter
+class ChatRequest(BaseModel):
     message: str
     patient_id: Optional[str] = None
 
@@ -92,18 +92,33 @@ async def logout(authorization: Optional[str] = Header(None)):
     return {"message": "Logout successful"}
 
 @app.post("/chat")
-async def chat_with_agent(chat_data: ApiChatRequest): # MODIFIED: Removed the Depends
+async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] = Header(None)):
     """
-    Unprotected endpoint to chat with the LLM agent graph.
-    It takes the user's message and user_id directly from the request body
-    and forwards them to the LLM service.
-    """
+    Protected endpoint to chat with the LLM agent graph.
+    Requires authentication token and forwards user message to LLM service.
     
-    # This is the payload your LangGraph service expects
+    Future enhancement: Auto-link patient_id from user profile/credentials
+    instead of requiring it in the request.
+    """
+    # Extract and validate token
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    
+    try:
+        token = authorization.split(" ")[1]
+    except IndexError:
+        raise HTTPException(status_code=401, detail="Invalid authorization format")
+    
+    user_id = tokens.get(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # TODO: Future - fetch patient_id from user profile in storage service
+    # For now, patient_id comes from request (currently null)
     llm_payload = {
         "message": chat_data.message,
-        "user_id": chat_data.user_id, # MODIFIED: Get user_id from the request body
-        "patient_id": chat_data.patient_id
+        "user_id": str(user_id),
+        "patient_id": chat_data.patient_id  # Will auto-link to user later
     }
     
     async with httpx.AsyncClient() as client:
@@ -111,7 +126,7 @@ async def chat_with_agent(chat_data: ApiChatRequest): # MODIFIED: Removed the De
             # Forward the request to the LLM Service
             # Use a long timeout, as agent graphs can be slow
             response = await client.post(
-                f"{LLM_SERVICE_URL}/invoke_agent_graph", 
+                f"{LLM_SERVICE_URL}/api/v1/invoke_agent_graph", 
                 json=llm_payload,
                 timeout=300.0 
             )

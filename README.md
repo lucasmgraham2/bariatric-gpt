@@ -48,9 +48,19 @@ python scripts/create_sample_data.py
 
 ## Architecture
 
-- **Storage Service**: User authentication and data management (SHA-256+salt hashing)
-- **API Gateway**: API orchestration and token management
-- **Flutter Frontend**: Mobile application interface with login/register/home screens
+- **Storage Service**: User authentication and patient data management (PostgreSQL)
+- **API Gateway**: API orchestration, token management, and chat routing
+- **LLM Service**: Multi-agent AI system with medical expertise (Port 8001)
+- **Flutter Frontend**: Mobile application with authentication and AI chat
+
+### 🤖 **NEW: Multi-Agent AI System**
+The app now includes an intelligent medical assistant that uses multiple specialized agents:
+- **Supervisor**: Routes queries to appropriate specialists
+- **Medical Agent**: Answers medical questions and provides guidance
+- **Data Agent**: Retrieves patient information from database
+- **Synthesizer**: Combines responses into coherent answers
+
+See **[MULTI_AGENT_SETUP.md](MULTI_AGENT_SETUP.md)** for complete setup and usage guide.
 
 ## API Endpoints
 
