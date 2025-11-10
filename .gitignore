@@ -1,0 +1,65 @@
+# Database files - never commit these!
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+postgres_data/
+/data/
+
+# Environment files with sensitive info
+.env
+.env.local
+.env.production
+
+# PostgreSQL data directory
+/postgresql/
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# lib/  # Commented out to allow Flutter lib/ directory
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Flutter - Keep build artifacts ignored but allow source code
+flutter_frontend/.dart_tool/
+flutter_frontend/.flutter-plugins
+flutter_frontend/.flutter-plugins-dependencies
+flutter_frontend/.packages
+flutter_frontend/build/
+flutter_frontend/ios/.symlinks/
+flutter_frontend/android/.gradle
+flutter_frontend/android/app/build/
+# Allow Flutter source code:
+!flutter_frontend/lib/
+!flutter_frontend/lib/**
+!flutter_frontend/test/
+
+# OS
+.DS_Store
+Thumbs.db
