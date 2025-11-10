@@ -11,6 +11,8 @@ class ChatRequest(BaseModel):
     message: str
     user_id: str
     patient_id: Optional[str] = None  # Reserved for future profile integration
+    profile: Optional[dict] = None
+    memory: Optional[str] = None
 
 @router.post("/invoke_agent_graph")
 async def invoke_chat(request: ChatRequest):
@@ -26,6 +28,7 @@ async def invoke_chat(request: ChatRequest):
     print(f"📨 New Chat Request from user: {request.user_id}")
     print(f"💬 Message: {request.message}")
     print(f"🏥 Patient ID: {request.patient_id if request.patient_id else 'None'}")
+    print(f"👤 Profile sent: {request.profile if request.profile else 'None'}")
     print(f"{'='*60}\n")
     
     # 1. Define the initial state for the multi-agent graph
@@ -33,6 +36,8 @@ async def invoke_chat(request: ChatRequest):
         "messages": [HumanMessage(content=request.message)],
         "user_id": request.user_id,
         "patient_id": request.patient_id,
+        "profile": request.profile,
+        "memory": request.memory,
         "next_agent": "",
         "medical_response": None,
         "data_response": None,
@@ -43,10 +48,11 @@ async def invoke_chat(request: ChatRequest):
         # 2. Invoke the compiled multi-agent graph
         # The graph will automatically route through supervisor → agents → synthesizer
         result_state = await app.ainvoke(initial_state)
-        
-        # 3. Extract the final synthesized response
+
+        # 3. Extract the final synthesized response and updated memory
         final_answer = result_state.get("final_response")
-        
+        updated_memory = result_state.get("memory")
+
         if not final_answer:
             # Fallback if synthesis failed
             final_answer = result_state["messages"][-1].content if result_state["messages"] else "I couldn't process that request."
@@ -56,7 +62,11 @@ async def invoke_chat(request: ChatRequest):
         print(f"📤 Sending response back to user")
         print(f"{'='*60}\n")
         
-        return {"response": final_answer}
+        # Include updated memory (if any) in the response so the gateway can persist it
+        resp = {"response": final_answer}
+        if updated_memory is not None:
+            resp["memory"] = updated_memory
+        return resp
     
     except Exception as e:
         print(f"\n{'='*60}")

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/services/settings_service.dart'; // Import new service
 import 'package:bariatric_gpt/screens/login_screen.dart';
+import 'package:bariatric_gpt/screens/profile_screen.dart';
 
 // Convert to StatefulWidget
 class SettingsScreen extends StatefulWidget {
@@ -91,7 +92,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 buildSettingsTile(
                   title: 'Edit Profile',
                   icon: Icons.person_outline,
-                  onTap: _showComingSoon, // Mock implementation
+                  onTap: () {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                  },
                 ),
                 buildSettingsTile(
                   title: 'Change Password',

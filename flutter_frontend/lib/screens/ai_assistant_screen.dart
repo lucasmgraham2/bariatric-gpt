@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:bariatric_gpt/services/ai_service.dart';
 
 // A simple model for a chat message
@@ -22,11 +23,13 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final AiService _aiService = AiService();
   final List<ChatMessage> _messages = [];
   bool _isTyping = false;
+  final FocusNode _textFocusNode = FocusNode();
 
   @override
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _textFocusNode.dispose();
     super.dispose();
   }
 
@@ -167,16 +170,43 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _textController,
-              onSubmitted: (_) => _sendMessage(),
-              decoration: const InputDecoration(
-                hintText: 'Ask about diet, recovery, or medical questions...',
-                border: InputBorder.none,
-                filled: false,
+            child: Focus(
+              onKey: (FocusNode node, RawKeyEvent event) {
+                if (event is RawKeyDownEvent) {
+                  final isShiftPressed = RawKeyboard.instance.keysPressed.contains(LogicalKeyboardKey.shiftLeft) ||
+                      RawKeyboard.instance.keysPressed.contains(LogicalKeyboardKey.shiftRight);
+
+                  if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+                    if (isShiftPressed) {
+                      // Insert newline at current cursor position
+                      final text = _textController.text;
+                      final sel = _textController.selection;
+                      final start = sel.start >= 0 ? sel.start : text.length;
+                      final end = sel.end >= 0 ? sel.end : text.length;
+                      final newText = text.replaceRange(start, end, '\n');
+                      final newOffset = start + 1;
+                      _textController.text = newText;
+                      _textController.selection = TextSelection.fromPosition(TextPosition(offset: newOffset));
+                      return KeyEventResult.handled;
+                    } else {
+                      _sendMessage();
+                      return KeyEventResult.handled;
+                    }
+                  }
+                }
+                return KeyEventResult.ignored;
+              },
+              child: TextField(
+                controller: _textController,
+                decoration: const InputDecoration(
+                  hintText: 'Ask about diet, recovery, or medical questions...',
+                  border: InputBorder.none,
+                  filled: false,
+                ),
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
               ),
-              minLines: 1,
-              maxLines: 5,
             ),
           ),
           IconButton(

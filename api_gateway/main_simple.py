@@ -91,6 +91,51 @@ async def logout(authorization: Optional[str] = Header(None)):
     
     return {"message": "Logout successful"}
 
+
+@app.get("/auth/profile")
+async def get_profile(authorization: Optional[str] = Header(None)):
+    """Return the current user's profile (forwarded from storage service)."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    try:
+        token = authorization.split(" ")[1]
+    except IndexError:
+        raise HTTPException(status_code=401, detail="Invalid authorization format")
+    user_id = tokens.get(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(f"{STORAGE_URL}/me/{user_id}")
+            response.raise_for_status()
+            data = response.json()
+            return {"profile": data.get("profile", {})}
+        except httpx.HTTPError:
+            raise HTTPException(status_code=500, detail="Storage service unavailable")
+
+
+@app.put("/auth/profile")
+async def update_profile(payload: dict, authorization: Optional[str] = Header(None)):
+    """Update the current user's profile by forwarding to storage service."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    try:
+        token = authorization.split(" ")[1]
+    except IndexError:
+        raise HTTPException(status_code=401, detail="Invalid authorization format")
+    user_id = tokens.get(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.put(f"{STORAGE_URL}/me/{user_id}/profile", json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError:
+            raise HTTPException(status_code=500, detail="Storage service unavailable")
+
 @app.post("/chat")
 async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] = Header(None)):
     """
@@ -120,6 +165,27 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
         "user_id": str(user_id),
         "patient_id": chat_data.patient_id  # Will auto-link to user later
     }
+    # Try to fetch the user's profile and conversation memory from the storage service and include them if available.
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{STORAGE_URL}/me/{user_id}")
+            if resp.status_code == 200:
+                user_info = resp.json()
+                llm_payload["profile"] = user_info.get("profile", {})
+            else:
+                llm_payload["profile"] = {}
+
+            # Fetch memory separately
+            mem_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/memory")
+            if mem_resp.status_code == 200:
+                mem_data = mem_resp.json()
+                llm_payload["memory"] = mem_data.get("memory", "")
+            else:
+                llm_payload["memory"] = ""
+    except Exception:
+        # If storage is unavailable or any error occurs, continue without profile/memory
+        llm_payload["profile"] = {}
+        llm_payload["memory"] = ""
     
     async with httpx.AsyncClient() as client:
         try:
@@ -134,8 +200,20 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
             # Propagate errors from the LLM service
             response.raise_for_status() 
             
+            llm_result = response.json()
+
+            # Persist updated memory if the LLM returned one
+            try:
+                new_memory = llm_result.get("memory")
+                if new_memory:
+                    async with httpx.AsyncClient() as client2:
+                        await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
+            except Exception:
+                # Don't fail the chat if memory persistence fails - just log in server
+                pass
+
             # Return the LLM's final response to the Flutter app
-            return response.json()
+            return llm_result
         
         except httpx.ConnectError:
             raise HTTPException(status_code=503, detail="LLM service is unavailable")

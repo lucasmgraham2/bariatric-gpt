@@ -24,6 +24,7 @@ class MultiAgentState(TypedDict):
     messages: List[BaseMessage]
     user_id: str
     patient_id: Optional[str]
+    profile: Optional[dict]
     next_agent: str  # Which agent should run next
     medical_response: Optional[str]  # Response from medical agent
     data_response: Optional[str]  # Response from data agent
@@ -196,53 +197,142 @@ async def synthesizer_agent(state: MultiAgentState) -> dict:
     
     medical_resp = state.get("medical_response")
     data_resp = state.get("data_response")
+    profile = state.get("profile") or {}
     last_message = state["messages"][-1].content
+    lowerm = last_message.lower()
+
+    # Quick path: if the user asks about their own preferences, return the stored profile directly
+    profile_query_phrases = [
+        "what are my food preferences",
+        "what are my preferences",
+        "what are my food preferences?",
+        "what are my preferences?",
+        "what is my profile",
+        "show my profile",
+        "what foods do i dislike",
+        "my food preferences",
+        "my profile",
+    ]
+
+    if any(phrase in lowerm for phrase in profile_query_phrases):
+        # If profile exists, format it in a clear, short answer
+        if profile:
+            disliked = profile.get("disliked_foods") or []
+            allergies = profile.get("allergies") or []
+            diet_type = profile.get("diet_type") or "not specified"
+            surgery_date = profile.get("surgery_date") or "not specified"
+
+            parts = []
+            parts.append(f"Diet type: {diet_type}.")
+            if disliked:
+                parts.append(f"Disliked foods: {', '.join(disliked)}.")
+            else:
+                parts.append("Disliked foods: none recorded.")
+            if allergies:
+                parts.append(f"Allergies/intolerances: {', '.join(allergies)}.")
+            else:
+                parts.append("Allergies/intolerances: none recorded.")
+            parts.append(f"Surgery date: {surgery_date}.")
+
+            final_response = " ".join(parts) + "\n\n(You can edit these in Settings → Edit Profile.)"
+
+            return {
+                "final_response": final_response,
+                "messages": state["messages"] + [AIMessage(content=final_response)]
+            }
+        else:
+            final_response = (
+                "I don't have your profile data yet. You can set your food dislikes, allergies, diet type, and surgery date in Settings → Edit Profile. "
+                "Once saved, ask again and I'll use that information to tailor meal suggestions."
+            )
+            return {
+                "final_response": final_response,
+                "messages": state["messages"] + [AIMessage(content=final_response)]
+            }
     
     # Determine what we have to synthesize
+    profile_summary = json.dumps(profile, indent=2) if profile else "(no profile provided)"
+
     if medical_resp and data_resp:
-        # Both agents responded - need to combine
-        synthesis_prompt = f"""You are synthesizing responses from two specialist agents.
+        synthesis_prompt = f"""
+You are a helpful medical assistant synthesizer. You will produce ONLY the following three sections in plain text:
 
-User's original question: "{last_message}"
+1) General Diet Suggestions:
+- Provide strictly general dietary guidance relevant to bariatric patients (high-level principles only). Do NOT give personalized medical directives or specific medical treatment.
 
-Medical Agent's Response:
+2) Example Meal Ideas:
+- Create three sample meals (Breakfast, Lunch, Dinner). For each meal include a one-line description, approximate portions, and a one-line simple rationale. Use the user's `surgery_date` and `diet_type` to tailor meal complexity and texture (e.g., early post-op: softer, protein-focused; later: more variety). Honor disliked foods and allergies from the profile; if no profile is available, produce neutral, general meal ideas suitable for typical post-bariatric diets.
+
+3) Suggested Questions for the Clinic:
+- Provide 4-6 general, useful questions the user can ask their surgical team about bariatric surgery, recovery, nutrition, or follow-up care.
+
+Context:
+User question: "{last_message}"
+Medical agent response:
 {medical_resp}
-
-Data Agent's Response:
+Data agent response:
 {data_resp}
+User profile summary:
+{profile_summary}
 
-Your job: Combine these into ONE clear, professional response that:
-1. Directly answers the user's question
-2. Integrates both medical guidance and patient data
-3. Is concise (3-4 sentences max)
-4. Sounds natural, not robotic
+Tone and rules:
+- Prioritize personalization: if profile data (diet_type, disliked_foods, allergies, surgery_date) is present, use it to adapt meal plans and examples.
+- If unsure what to recommend for a given meal or phase, default to recommending protein-focused options (lean protein, dairy/protein shakes, legumes if tolerated) as a safe, post-bariatric-friendly choice.
+- Keep language general and non-prescriptive. Always include a reminder that this is general information and not a substitute for medical advice.
+- Be concise: overall output should be clear and skimmable (use bullets or short paragraphs).
+- Do not reference patient identifiers or attempt diagnosis.
 
-Final Response:"""
-        
+Generate the three sections now.
+"""
+
     elif medical_resp:
-        # Only medical response
-        synthesis_prompt = f"""Refine this medical response to be clear and professional:
+        synthesis_prompt = f"""
+You are a helpful medical assistant. Produce ONLY the following three sections in plain text:
 
-Original: {medical_resp}
+1) General Diet Suggestions:
+- Provide strictly general dietary guidance relevant to bariatric patients (high-level principles only).
 
-Refined Response:"""
-        
+2) Example Meal Ideas:
+- Create three sample meals (Breakfast, Lunch, Dinner). Use the user's `surgery_date` and `diet_type` to tailor meal complexity and texture (e.g., early post-op: softer, protein-focused; later: more variety). Avoid any disliked foods or allergies if present in the profile.
+
+3) Suggested Questions for the Clinic:
+- Provide 4-6 useful questions the user can ask their surgical team.
+
+Context:
+User question: "{last_message}"
+Medical agent response:
+{medical_resp}
+User profile summary:
+{profile_summary}
+
+Prioritize personalization: if profile data (diet_type, disliked_foods, allergies, surgery_date) is present, use it to adapt meal plans and examples. If unsure, default to protein-focused options. Keep it concise and non-prescriptive. Reminder: this is general information, not medical advice.
+"""
+
     elif data_resp:
-        # Only data response
-        synthesis_prompt = f"""Format this patient data into a natural response:
+        synthesis_prompt = f"""
+You are a helpful medical assistant producing general guidance and meal examples. Produce ONLY these three sections in plain text:
 
-Data: {data_resp}
+1) General Diet Suggestions
+2) Example Meal Ideas (3 meals)
+3) Suggested Questions for the Clinic (4-6 questions)
 
-User asked: "{last_message}"
+Context:
+User question: "{last_message}"
+Data agent response:
+{data_resp}
+User profile summary:
+{profile_summary}
 
-Natural Response:"""
-        
+Prioritize personalization: if profile data (diet_type, disliked_foods, allergies, surgery_date) is present, use it to adapt meal plans and examples. If unsure, default to protein-focused options. Keep language general and concise. Do not provide personalized medical directives.
+"""
+
     else:
         # Last-line fallback: directly answer the user's question with a concise medical response
         rescue_prompt = ChatPromptTemplate.from_messages([
             ("system", """
 You are a helpful medical assistant specializing in bariatric surgery and weight management.
 Provide accurate, concise guidance in 2-3 sentences. This is general information, not a substitute for medical care.
+If you are unsure what to recommend, prioritize protein-rich options (lean protein, protein shakes, dairy or tolerated legumes) as safe post-bariatric choices.
 """),
             ("human", "{query}")
         ])
@@ -258,11 +348,28 @@ Provide accurate, concise guidance in 2-3 sentences. This is general information
     
     response = await llm.ainvoke([HumanMessage(content=synthesis_prompt)])
     final_response = response.content.strip()
-    
+
     print("--- SYNTHESIZER: Final response created ---")
-    
+
+    # Create an updated concise memory summary that preserves user preferences or notable events.
+    try:
+        prev_memory = state.get("memory") or ""
+        memory_prompt = (
+            f"You are a summarization assistant that writes one short sentence (<=25 words) to capture what is useful to remember about a user for future conversations.\n"
+            f"Previous memory: {prev_memory}\n"
+            f"Conversation snippet - User: \"{last_message}\" Assistant: \"{final_response}\"\n"
+            "Create an updated memory that preserves persistent preferences (diet_type, disliked foods, allergies) and any recent user events (e.g., user ate a suggested meal). Keep it concise." 
+        )
+
+        mem_resp = await llm.ainvoke([HumanMessage(content=memory_prompt)])
+        memory_summary = mem_resp.content.strip()
+    except Exception as e:
+        print(f"--- SYNTHESIZER: Memory generation failed: {e} ---")
+        memory_summary = prev_memory if prev_memory else ""
+
     return {
         "final_response": final_response,
+        "memory": memory_summary,
         "messages": state["messages"] + [AIMessage(content=final_response)]
     }
 

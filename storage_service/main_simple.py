@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, Date, text
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, Date, text, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel, EmailStr
@@ -24,6 +24,10 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    # JSON string storing user's profile/preferences (kept simple for portability)
+    profile_json = Column(String, nullable=True, default='{}')
+    # Concise conversation memory / summary for this user (grows over time)
+    conversation_memory = Column(String, nullable=True, default='')
 
 # Patient table (for demo purposes)
 class Patient(Base):
@@ -53,6 +57,8 @@ class UserResponse(BaseModel):
     email: str
     username: str
     is_active: bool
+    profile: Optional[dict] = None
+    memory: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -73,6 +79,43 @@ class PatientResponse(BaseModel):
 
 app = FastAPI()
 
+
+def ensure_profile_json_column():
+    """Ensure the users table has a profile_json column; if not, add it.
+
+    This helps when the database was created before the code added the column.
+    """
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        if 'users' in tables:
+            cols = [c['name'] for c in inspector.get_columns('users')]
+            if 'profile_json' not in cols:
+                print("'profile_json' column missing on users table; adding it now...")
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN profile_json TEXT DEFAULT '{}'"))
+                    print("Added 'profile_json' column to users table")
+                except Exception as e:
+                    print(f"Failed to add profile_json column: {e}")
+            else:
+                print("'profile_json' column already exists on users table")
+
+            if 'conversation_memory' not in cols:
+                print("'conversation_memory' column missing on users table; adding it now...")
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN conversation_memory TEXT DEFAULT ''"))
+                    print("Added 'conversation_memory' column to users table")
+                except Exception as e:
+                    print(f"Failed to add conversation_memory column: {e}")
+            else:
+                print("'conversation_memory' column already exists on users table")
+        else:
+            print("Users table does not exist yet; create_all will create it with the profile_json column if present in the model")
+    except Exception as e:
+        print(f"Could not inspect database schema to ensure profile_json column: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     # Try to create tables with retry logic
@@ -82,6 +125,8 @@ async def startup_event():
         try:
             Base.metadata.create_all(bind=engine)
             print("Database tables created successfully")
+            # Ensure profile_json column exists for compatibility with older databases
+            ensure_profile_json_column()
             break
         except Exception as e:
             if attempt < max_retries - 1:
@@ -179,7 +224,64 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    # Parse profile JSON into dict for response
+    try:
+        profile = {}
+        if user.profile_json:
+            import json as _json
+            profile = _json.loads(user.profile_json)
+    except Exception:
+        profile = {}
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "is_active": user.is_active,
+        "profile": profile,
+        "memory": user.conversation_memory or "",
+    }
+
+
+class ProfileUpdate(BaseModel):
+    profile: dict
+
+
+@app.put("/me/{user_id}/profile")
+def update_profile(user_id: int, update: ProfileUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    import json as _json
+    user.profile_json = _json.dumps(update.profile)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"profile": update.profile}
+
+
+class MemoryUpdate(BaseModel):
+    memory: str
+
+
+@app.get("/me/{user_id}/memory")
+def get_memory(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"memory": user.conversation_memory or ""}
+
+
+@app.put("/me/{user_id}/memory")
+def update_memory(user_id: int, update: MemoryUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.conversation_memory = update.memory
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"memory": update.memory}
 
 @app.get("/patients/{patient_id}", response_model=PatientResponse)
 def get_patient(patient_id: int, db: Session = Depends(get_db)):
