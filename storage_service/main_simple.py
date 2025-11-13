@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, Date, text, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -28,6 +28,8 @@ class User(Base):
     profile_json = Column(String, nullable=True, default='{}')
     # Concise conversation memory / summary for this user (grows over time)
     conversation_memory = Column(String, nullable=True, default='')
+    # Optional conversation log stored as JSON array string (recent exchanges)
+    conversation_log = Column(String, nullable=True, default='[]')
 
 # Patient table (for demo purposes)
 class Patient(Base):
@@ -79,6 +81,11 @@ class PatientResponse(BaseModel):
 
 app = FastAPI()
 
+# Optional service API key to protect memory writes. If set, PUT /me/{user_id}/memory
+# requires the header 'X-SERVICE-KEY' to match this value. If not set, behavior is
+# backwards compatible (no header required).
+SERVICE_API_KEY = os.getenv("SERVICE_API_KEY")
+
 
 def ensure_profile_json_column():
     """Ensure the users table has a profile_json column; if not, add it.
@@ -111,6 +118,17 @@ def ensure_profile_json_column():
                     print(f"Failed to add conversation_memory column: {e}")
             else:
                 print("'conversation_memory' column already exists on users table")
+
+            if 'conversation_log' not in cols:
+                print("'conversation_log' column missing on users table; adding it now...")
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN conversation_log TEXT DEFAULT '[]'"))
+                    print("Added 'conversation_log' column to users table")
+                except Exception as e:
+                    print(f"Failed to add conversation_log column: {e}")
+            else:
+                print("'conversation_log' column already exists on users table")
         else:
             print("Users table does not exist yet; create_all will create it with the profile_json column if present in the model")
     except Exception as e:
@@ -265,7 +283,16 @@ class MemoryUpdate(BaseModel):
 
 
 @app.get("/me/{user_id}/memory")
-def get_memory(user_id: int, db: Session = Depends(get_db)):
+def get_memory(user_id: int, x_service_key: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    """Return the conversation memory for a user.
+
+    If SERVICE_API_KEY is configured, require the matching X-SERVICE-KEY header.
+    """
+    # If a service key is configured, require the caller to present it.
+    if SERVICE_API_KEY:
+        if not x_service_key or x_service_key != SERVICE_API_KEY:
+            raise HTTPException(status_code=403, detail="Forbidden: invalid service key")
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -273,15 +300,55 @@ def get_memory(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/me/{user_id}/memory")
-def update_memory(user_id: int, update: MemoryUpdate, db: Session = Depends(get_db)):
+def update_memory(user_id: int, update: MemoryUpdate, x_service_key: Optional[str] = Header(None), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    # If a SERVICE_API_KEY is configured, require the matching header for writes.
+    if SERVICE_API_KEY:
+        if not x_service_key or x_service_key != SERVICE_API_KEY:
+            raise HTTPException(status_code=403, detail="Forbidden: invalid service key")
+
+    # Update the stored concise conversation memory. This endpoint is intended to
+    # be used only by trusted backend services (API Gateway / LLM orchestrator).
     user.conversation_memory = update.memory
     db.add(user)
     db.commit()
     db.refresh(user)
     return {"memory": update.memory}
+
+
+class ConversationLogUpdate(BaseModel):
+    log: str  # JSON array string (list of exchanges)
+
+
+@app.get("/me/{user_id}/conversation_log")
+def get_conversation_log(user_id: int, x_service_key: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    # Require service key if configured
+    if SERVICE_API_KEY:
+        if not x_service_key or x_service_key != SERVICE_API_KEY:
+            raise HTTPException(status_code=403, detail="Forbidden: invalid service key")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"log": user.conversation_log or "[]"}
+
+
+@app.put("/me/{user_id}/conversation_log")
+def update_conversation_log(user_id: int, update: ConversationLogUpdate, x_service_key: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    if SERVICE_API_KEY:
+        if not x_service_key or x_service_key != SERVICE_API_KEY:
+            raise HTTPException(status_code=403, detail="Forbidden: invalid service key")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.conversation_log = update.log
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return {"log": update.log}
 
 @app.get("/patients/{patient_id}", response_model=PatientResponse)
 def get_patient(patient_id: int, db: Session = Depends(get_db)):

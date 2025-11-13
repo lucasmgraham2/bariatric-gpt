@@ -13,6 +13,8 @@ class ChatRequest(BaseModel):
     patient_id: Optional[str] = None  # Reserved for future profile integration
     profile: Optional[dict] = None
     memory: Optional[str] = None
+    conversation_log: Optional[str] = None
+    debug: Optional[bool] = False
 
 @router.post("/invoke_agent_graph")
 async def invoke_chat(request: ChatRequest):
@@ -38,6 +40,7 @@ async def invoke_chat(request: ChatRequest):
         "patient_id": request.patient_id,
         "profile": request.profile,
         "memory": request.memory,
+        "conversation_log": request.conversation_log,
         "next_agent": "",
         "medical_response": None,
         "data_response": None,
@@ -66,6 +69,11 @@ async def invoke_chat(request: ChatRequest):
         resp = {"response": final_answer}
         if updated_memory is not None:
             resp["memory"] = updated_memory
+        # If debug requested, include raw agent outputs for inspection
+        if request.debug:
+            resp["medical_response"] = result_state.get("medical_response")
+            resp["data_response"] = result_state.get("data_response")
+            resp["state_messages"] = [m.content for m in result_state.get("messages", [])]
         return resp
     
     except Exception as e:

@@ -38,9 +38,13 @@ class AiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        // Prefer Markdown-formatted response if available, otherwise plain text.
+        final plain = data['final_response'] ?? data['response'] ?? '';
+        final markdown = data['final_response_readme'] ?? data['final_response_markdown'];
         return {
           'success': true,
-          'response': data['response'],
+          'response': plain,
+          'response_markdown': markdown,
         };
       } else if (response.statusCode == 401) {
         return {

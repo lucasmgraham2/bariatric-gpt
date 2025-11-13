@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 import uuid
 import httpx
+import os
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -11,6 +12,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 STORAGE_URL = "http://localhost:8002"
 LLM_SERVICE_URL = "http://localhost:8001"
 tokens = {}
+# Optional key the gateway will send when persisting memory to storage service.
+STORAGE_SERVICE_KEY = os.getenv("STORAGE_SERVICE_KEY")
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -73,7 +76,12 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         try:
             response = await client.get(f"{STORAGE_URL}/me/{user_id}")
             response.raise_for_status()
-            return response.json()
+            user_data = response.json()
+            # Do not expose the internal conversation memory to client-side callers.
+            if isinstance(user_data, dict) and 'memory' in user_data:
+                user_data = dict(user_data)  # shallow copy
+                user_data.pop('memory', None)
+            return user_data
         except httpx.HTTPError:
             raise HTTPException(status_code=500, detail="Storage service unavailable")
 
@@ -175,13 +183,29 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
             else:
                 llm_payload["profile"] = {}
 
-            # Fetch memory separately
-            mem_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/memory")
+            # Fetch memory separately (use service key if configured)
+            headers = {"X-SERVICE-KEY": STORAGE_SERVICE_KEY} if STORAGE_SERVICE_KEY else None
+            if headers:
+                mem_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/memory", headers=headers)
+            else:
+                mem_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/memory")
+
             if mem_resp.status_code == 200:
                 mem_data = mem_resp.json()
                 llm_payload["memory"] = mem_data.get("memory", "")
             else:
                 llm_payload["memory"] = ""
+            # Fetch recent conversation log (use service key if configured)
+            if headers:
+                log_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/conversation_log", headers=headers)
+            else:
+                log_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/conversation_log")
+
+            if log_resp.status_code == 200:
+                log_data = log_resp.json()
+                llm_payload["conversation_log"] = log_data.get("log", "[]")
+            else:
+                llm_payload["conversation_log"] = "[]"
     except Exception:
         # If storage is unavailable or any error occurs, continue without profile/memory
         llm_payload["profile"] = {}
@@ -207,7 +231,58 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
                 new_memory = llm_result.get("memory")
                 if new_memory:
                     async with httpx.AsyncClient() as client2:
-                        await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
+                        headers = {"X-SERVICE-KEY": STORAGE_SERVICE_KEY} if STORAGE_SERVICE_KEY else None
+                        # Only include header when configured; httpx accepts None for headers
+                        if headers:
+                            await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory}, headers=headers)
+                        else:
+                            await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
+                # Also append this exchange to the conversation log so future
+                # chats can see the recent transcript. We'll fetch the existing
+                # log, append a new entry, and PUT it back.
+                try:
+                    final_resp = llm_result.get("response") or llm_result.get("final_response") or ""
+                    # Get existing log
+                    if headers:
+                        existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log", headers=headers)
+                    else:
+                        existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log")
+                    if existing.status_code == 200:
+                        log_json = existing.json().get("log", "[]")
+                    else:
+                        log_json = "[]"
+                    # Build new log array and append role-tagged entries (user then assistant)
+                    import json as _json
+                    try:
+                        parsed = _json.loads(log_json)
+                        # If storage has the new dict format, read arrays
+                        if isinstance(parsed, dict):
+                            recent_user = parsed.get("recent_user_prompts", []) or []
+                            recent_assistant = parsed.get("recent_assistant_responses", []) or []
+                        elif isinstance(parsed, list):
+                            # Legacy: convert list of role-tagged dicts into the new structure
+                            recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"][-5:]
+                            recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"][-5:]
+                        else:
+                            recent_user = []
+                            recent_assistant = []
+                    except Exception:
+                        recent_user = []
+                        recent_assistant = []
+                    # Append and trim to last 5
+                    from datetime import datetime
+                    recent_user.append(chat_data.message)
+                    recent_user = recent_user[-5:]
+                    recent_assistant.append(final_resp)
+                    recent_assistant = recent_assistant[-5:]
+                    new_log_obj = {"recent_user_prompts": recent_user, "recent_assistant_responses": recent_assistant}
+                    # PUT updated log (store as JSON string in the 'log' field to remain compatible)
+                    if headers:
+                        await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)}, headers=headers)
+                    else:
+                        await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)})
+                except Exception:
+                    pass
             except Exception:
                 # Don't fail the chat if memory persistence fails - just log in server
                 pass

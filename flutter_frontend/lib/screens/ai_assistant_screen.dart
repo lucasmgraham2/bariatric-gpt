@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:bariatric_gpt/services/ai_service.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 // A simple model for a chat message
 class ChatMessage {
   final String text;
   final bool isUser;
+  final bool isMarkdown;
 
-  ChatMessage({required this.text, required this.isUser});
+  ChatMessage({required this.text, required this.isUser, this.isMarkdown = false});
 }
 
 class AiAssistantScreen extends StatefulWidget {
@@ -52,7 +54,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     setState(() {
       _isTyping = false;
       if (result['success']) {
-        _messages.add(ChatMessage(text: result['response'], isUser: false));
+        final md = result['response_markdown'];
+        if (md != null && md is String && md.isNotEmpty) {
+          _messages.add(ChatMessage(text: md, isUser: false, isMarkdown: true));
+        } else {
+          _messages.add(ChatMessage(text: result['response'] ?? '', isUser: false));
+        }
       } else {
         _messages.add(ChatMessage(
           text: '❌ Error: ${result['error']}',
@@ -140,10 +147,23 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             color: color,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(
-            message.text,
-            style: TextStyle(color: textColor, fontSize: 16),
-          ),
+          child: message.isUser
+              ? Text(
+                  message.text,
+                  style: TextStyle(color: textColor, fontSize: 16),
+                )
+              : (message.isMarkdown
+                  ? MarkdownBody(
+                      data: message.text,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(color: textColor, fontSize: 16),
+                        h1: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : Text(
+                      message.text,
+                      style: TextStyle(color: textColor, fontSize: 16),
+                    )),
         ),
       ],
     );
