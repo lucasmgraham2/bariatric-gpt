@@ -3,6 +3,7 @@ import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/screens/login_screen.dart';
 import 'package:bariatric_gpt/screens/settings_screen.dart';
 import 'package:bariatric_gpt/screens/ai_assistant_screen.dart';
+import 'package:bariatric_gpt/screens/patient_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -108,8 +109,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               Icons.people,
                               'Manage patient records securely',
                               () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Feature coming soon!')),
+                                // This is the new navigation logic
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (context) => const PatientManagementScreen()),
                                 );
                               },
                             ),

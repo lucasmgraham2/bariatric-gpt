@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/profile_service.dart';
+import '../services/profile_service.dart'; // Make sure this path is correct
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -17,10 +17,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _saving = false;
   Map<String, dynamic> _profile = {};
 
-  final TextEditingController _allergiesController = TextEditingController();
-  final TextEditingController _dietTypeController = TextEditingController();
-  final TextEditingController _dislikedController = TextEditingController();
-  final TextEditingController _surgeryDateController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
   @override
   void initState() {
@@ -30,10 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _allergiesController.dispose();
-    _dietTypeController.dispose();
-    _dislikedController.dispose();
-    _surgeryDateController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -46,16 +42,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (result['success'] == true) {
       _profile = Map<String, dynamic>.from(result['profile'] ?? {});
-      _dislikedController.text = ((_profile['disliked_foods'] ?? []) as List).join(', ');
-      _allergiesController.text = ((_profile['allergies'] ?? []) as List).join(', ');
-      _dietTypeController.text = (_profile['diet_type'] ?? '') as String;
-      final sd = _profile['surgery_date'];
-      _surgeryDateController.text = sd != null ? sd.toString() : '';
+      // Load personal info fields
+      _usernameController.text = (_profile['username'] ?? '') as String;
+      _emailController.text = (_profile['email'] ?? '') as String;
     } else {
-      // If not authenticated or not found, keep defaults
-      // Optionally show a snackbar
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['error'] ?? 'Failed to load profile')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['error'] ?? 'Failed to load profile')));
       }
     }
 
@@ -65,18 +58,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _saving = true;
     });
 
-    final profileToSave = {
-      'disliked_foods': _dislikedController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
-      'allergies': _allergiesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
-      'diet_type': _dietTypeController.text.trim(),
-      'surgery_date': _surgeryDateController.text.trim(),
-    };
+    // IMPORTANT: Create a copy to avoid deleting other profile data (like diet)
+    final profileToSave = Map<String, dynamic>.from(_profile);
+
+    // Update only the fields relevant to this screen
+    profileToSave['username'] = _usernameController.text.trim();
+    profileToSave['email'] = _emailController.text.trim();
 
     final result = await _profileService.updateProfile(profileToSave);
 
@@ -85,12 +78,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     if (result['success'] == true) {
+      // Update the local _profile state
+      _profile = profileToSave;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Profile saved')));
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['error'] ?? 'Failed to save profile')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['error'] ?? 'Failed to save profile')));
       }
     }
   }
@@ -99,7 +96,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile Preferences'),
+        title: const Text('Personal Information'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadProfile,
+            tooltip: 'Reload Profile',
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -109,64 +113,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 key: _formKey,
                 child: ListView(
                   children: [
-                    const Text('Food you dislike', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text('Username',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     TextFormField(
-                      controller: _dislikedController,
-                      decoration: const InputDecoration(hintText: 'Comma-separated, e.g., broccoli, liver'),
+                      controller: _usernameController,
+                      decoration:
+                          const InputDecoration(hintText: 'Your display name'),
                       textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Allergies / intolerances', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _allergiesController,
-                      decoration: const InputDecoration(hintText: 'Comma-separated, e.g., nuts, dairy'),
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Diet type (vegetarian / pescatarian / etc.)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _dietTypeController,
-                      decoration: const InputDecoration(hintText: 'e.g., vegetarian, pescatarian, omnivore'),
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Surgery date', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _surgeryDateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(hintText: 'Tap to pick date'),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked != null) {
-                          _surgeryDateController.text = picked.toIso8601String().split('T').first;
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Username cannot be empty';
                         }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Email Address',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration:
+                          const InputDecoration(hintText: 'e.g., user@example.com'),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.done,
+                       validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Email cannot be empty';
+                        }
+                        // Simple email validation
+                        if (!value.contains('@') || !value.contains('.')) {
+                           return 'Please enter a valid email';
+                        }
+                        return null;
                       },
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: _saving ? null : _saveProfile,
-                      child: _saving ? const CircularProgressIndicator(color: Colors.white) : const Text('Save Preferences'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () async {
-                        // Reset to defaults
-                        _dislikedController.clear();
-                        _allergiesController.clear();
-                        _dietTypeController.clear();
-                        _surgeryDateController.clear();
-                        await _saveProfile();
-                      },
-                      child: const Text('Clear and Save'),
+                      child: _saving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('Save Information'),
                     ),
                   ],
                 ),
