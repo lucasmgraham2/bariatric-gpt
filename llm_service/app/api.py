@@ -65,10 +65,15 @@ async def invoke_chat(request: ChatRequest):
         print(f"📤 Sending response back to user")
         print(f"{'='*60}\n")
         
-        # Include updated memory (if any) in the response so the gateway can persist it
+        # Include updated memory and conversation_log (if any) so the gateway can persist them
         resp = {"response": final_answer}
         if updated_memory is not None:
             resp["memory"] = updated_memory
+        # If the agent graph returned a compact conversation_log, include it in the response
+        # so the gateway can persist the authoritative recent-5 transcript.
+        conv_log = result_state.get("conversation_log")
+        if conv_log is not None:
+            resp["conversation_log"] = conv_log
         # If debug requested, include raw agent outputs for inspection
         if request.debug:
             resp["medical_response"] = result_state.get("medical_response")

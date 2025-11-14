@@ -179,10 +179,11 @@ async def preprocessor_agent(state: MultiAgentState) -> dict:
         except Exception:
             expanded = None
 
-        # Default expansion if no enumerated mapping was possible
+                # Default expansion if no enumerated mapping was possible
         if expanded is None:
-            if assistant_question:
-                expanded = f"User replied '{last_user}' in response to the assistant question: '{assistant_question}'"
+            # Use the assistant_text we extracted earlier (may be None)
+            if assistant_text:
+                expanded = f"User replied '{last_user}' in response to the assistant question: '{assistant_text}'"
             else:
                 expanded = f"User replied '{last_user}' (context: previous assistant question not found)"
 
@@ -211,6 +212,52 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     prev_memory = state.get("memory") or ""
     convo_excerpt = state.get("conversation_log") or "[]"
     patient_id = state.get("patient_id")
+    # Control flags
+    early_response = None
+    no_closing_question = False
+
+    # Helper: small wrapper to make LLM calls more conversational and bias recency
+    async def _llm_invoke(text: str):
+        suffix = (
+            "\n\nBe conversational and friendly. Keep answers concise and helpful. "
+            "End your answer with a short question like 'How else can I help?'"
+        )
+        try:
+            return await llm.ainvoke([HumanMessage(content=text + suffix)])
+        except Exception:
+            # Fallback to a plain invoke if wrapper fails
+            return await llm.ainvoke([HumanMessage(content=text)])
+
+    # Build a recent-focused conversation excerpt (most recent first) to bias
+    # the LLM toward the latest context. This is a compact string used in prompts.
+    def _build_recent_excerpt(convo: str) -> str:
+        try:
+            parsed = json.loads(convo) if isinstance(convo, str) else (convo or {})
+            if isinstance(parsed, dict):
+                recent_user = parsed.get("recent_user_prompts", []) or []
+                recent_assistant = parsed.get("recent_assistant_responses", []) or []
+            elif isinstance(parsed, list):
+                recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"]
+                recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"]
+            else:
+                recent_user = []
+                recent_assistant = []
+        except Exception:
+            recent_user = []
+            recent_assistant = []
+
+        # Limit and order most recent first for recency bias
+        ru = list(recent_user[-5:])[::-1]
+        ra = list(recent_assistant[-5:])[::-1]
+
+        ra_str = "\n".join([f"- {r}" for r in ra]) if ra else "(none)"
+        ru_str = "\n".join([f"- {r}" for r in ru]) if ru else "(none)"
+        return (
+            "Recent assistant responses (most recent first):\n" + ra_str +
+            "\n\nRecent user prompts (most recent first):\n" + ru_str
+        )
+
+    convo_recent_str = _build_recent_excerpt(convo_excerpt)
 
     # Optional patient data fetch
     data_resp = None
@@ -234,6 +281,32 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     is_recipe = any(k in low for k in ["recipe", "how to make", "how do i make", "cook", "instructions"]) or "recipe" in low
     is_profile = any(k in low for k in ["what are my food preferences", "my profile", "what is my profile", "what are my allergies", "do i have any allergies"]) 
     wants_meals = any(k in low for k in ["meal", "meals", "lunch", "dinner", "breakfast", "meal ideas", "suggest" ,"suggestions"]) and not is_grocery and not is_recipe
+
+    # Politeness and conversational cues
+    greetings = ("hi", "hello", "hey", "good morning", "good afternoon", "good evening")
+    thanks_words = ("thank", "thanks", "thank you", "thx", "ty")
+    goodbyes = ("bye", "goodbye", "see you", "see ya", "talk later", "later", "take care")
+
+    is_greeting = any(low.strip().startswith(g) for g in greetings)
+    is_thanks = any(g in low for g in thanks_words)
+    is_goodbye = any(g in low for g in goodbyes)
+
+    # If greeting, respond with a friendly greeting. Do NOT clear the stored
+    # conversation excerpt (preserve history). Only treat short messages as
+    # greetings so longer inputs like "hello I have a question about X" still
+    # run through the normal flow.
+    tokens = low.split()
+    if is_greeting and len(tokens) <= 4:
+        early_response = "Hello! I'm your bariatric surgery assistant. How can I help you today?"
+
+    # If the user says goodbye, reply politely and don't append the usual closing question.
+    if is_goodbye and len(tokens) <= 6:
+        early_response = "Goodbye — wishing you a smooth recovery and good health. Take care!"
+        no_closing_question = True
+
+    # If the user thanks the assistant, show manners and offer any further help.
+    if is_thanks and len(tokens) <= 6:
+        early_response = "You're welcome! I'm glad I could help. Is there anything else I can do for you?"
 
     # helper to fetch last assistant text from conversation_log or messages
     def _get_recent_assistant_text():
@@ -265,14 +338,74 @@ async def assistant_agent(state: MultiAgentState) -> dict:
 
     recent_assistant = _get_recent_assistant_text()
 
+    # Topicality check: only mark off-topic when there are clear indicators
+    # that the user is asking about unrelated domains (finance, sports,
+    # entertainment, politics, etc.). Default to permissive (on-topic) so the
+    # redirect is rare and only used when the conversation is clearly off-track.
+    def _is_on_topic(msg: str) -> bool:
+        if not msg:
+            return True
+        low = msg.lower()
+        # Allow brief greetings and polite phrases
+        smalltalk = ("hi", "hello", "hey", "thanks", "thank", "bye", "goodbye", "good morning", "good evening")
+        if any(low.startswith(s) for s in smalltalk):
+            return True
+
+        # Keywords indicating bariatric/post-op/nutrition topics — if present,
+        # definitely treat as on-topic.
+        topic_keywords = [
+            "bariatric", "surgery", "post-op", "post op", "postop", "weight loss",
+            "gastric", "sleeve", "bypass", "revision", "nutrition", "protein",
+            "calorie", "meal", "diet", "allergy", "allergies", "dislike", "exercise",
+            "activity", "recovery", "complication", "vomit", "nausea", "food",
+            "incision", "wound", "suture", "breakfast", "follow up", "lunch", "dinner",
+        ]
+        if any(k in low for k in topic_keywords):
+            return True
+
+        # Explicit off-topic domains that should trigger the redirect only when
+        # there is no overlap with topic keywords. These are things like
+        # finance, sports, politics, entertainment, and other unrelated areas.
+        off_topic_keywords = [
+            "finance", "money", "bank", "loan", "mortgage", "rent", "salary", "stocks", "invest", "investment",
+            "sports", "football", "soccer", "basketball", "baseball", "nba", "nfl", "mlb", "cricket",
+            "movie", "movies", "tv", "show", "celebrity", "music", "concert", "gaming", "video game",
+            "politics", "election", "government", "policy", "religion", "prayer",
+            "dating", "relationship advice" , "gambling"
+        ]
+        if any(k in low for k in off_topic_keywords):
+            return False
+
+        # Short context-dependent replies should be allowed so the preprocessor
+        # can expand them using conversation_log.
+        if low.strip() in {"yes", "no", "y", "n", "okay", "ok"}:
+            return True
+
+        # Default: be permissive and treat as on-topic (avoids false positives).
+        return True
+
+    off_topic = not _is_on_topic(last_message)
+    # If an early deterministic response exists (greeting/thanks/goodbye), keep it aside
+    # but still run the main LLM/tool flow so tool access is preserved. We'll prefer
+    # the early deterministic response only after the LLM flow completes successfully
+    # for truly pure greetings/thanks/goodbyes.
+    chosen_early = early_response
+
     # Handle specialized intents first (grocery, calorie, recipe, profile)
-    if is_grocery:
+    if off_topic:
+        # Polite redirect when user drifts away from bariatric/post-op help
+        final_response = (
+            "I can only help with bariatric surgery and related post-operative care. "
+            "If you have questions about recovery, diet, meals, activity, or surgery-specific concerns, "
+            "please ask and I will do my best to help. For other topics, I am not able to assist."
+        )
+    elif is_grocery:
         # Produce a consolidated grocery list based on the most recent assistant meal suggestions
         if recent_assistant:
             prompt = f"""
-You are a helpful assistant that turns meal suggestions into a consolidated grocery shopping list grouped by typical grocery sections (produce, dairy, proteins, pantry, spices, frozen).\n\nMeal suggestions:\n{recent_assistant}\n\nReturn a short, deduplicated shopping list with approximate quantities where reasonable.
+You are a helpful assistant that turns meal suggestions into a consolidated grocery shopping list grouped by typical grocery sections (produce, dairy, proteins, pantry, spices, frozen).\n\nMeal suggestions (most recent first):\n{convo_recent_str}\n\nReturn a short, deduplicated shopping list with approximate quantities where reasonable.
 """
-            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+            resp = await _llm_invoke(prompt)
             final_response = resp.content.strip()
         else:
             final_response = "I couldn't find recent meal suggestions to build a grocery list from. Could you tell me which meals you want a shopping list for?"
@@ -280,8 +413,8 @@ You are a helpful assistant that turns meal suggestions into a consolidated groc
     elif is_calorie:
         if recent_assistant:
             prompt = f"""
-Given the following meal suggestions, produce a concise calorie estimate per meal and per serving, and a brief note on how to reduce calories if needed:\n\n{recent_assistant}\n\nFormat as bullets: Meal name - estimated calories per serving (short note)."""
-            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+Given the following meal suggestions, produce a concise calorie estimate per meal and per serving, and a brief note on how to reduce calories if needed:\n\n{convo_recent_str}\n\nFormat as bullets: Meal name - estimated calories per serving (short note)."""
+            resp = await _llm_invoke(prompt)
             final_response = resp.content.strip()
         else:
             final_response = "I couldn't find recent meals to break down. Which meal would you like a calorie estimate for?"
@@ -301,7 +434,7 @@ Given the following meal suggestions, produce a concise calorie estimate per mea
         if target:
             prompt = f"""
 Provide step-by-step recipe instructions suitable for a post-bariatric patient for the dish: {target}. Keep steps simple, focus on protein, soft textures if early post-op, and include approximate times and an easy serving size."""
-            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+            resp = await _llm_invoke(prompt)
             final_response = resp.content.strip()
         else:
             final_response = "Which recipe would you like instructions for?"
@@ -324,14 +457,14 @@ Provide step-by-step recipe instructions suitable for a post-bariatric patient f
         # General case: if user asked for meals explicitly, produce meal suggestions; otherwise produce general medical guidance and optionally brief actionable tips
         if wants_meals:
             prompt = f"""
-You are a helpful medical assistant. Produce three example meals (Breakfast, Lunch, Dinner) tailored to the user's profile when present. For each meal include a one-line description, approximate serving size, and an estimated calorie range (e.g., 250-400 kcal). Keep it concise and skimmable.\n\nContext:\nUser question: '{last_message}'\nProfile: {json.dumps(profile)}\nPrevious memory: {prev_memory}\nRecent conversation excerpt: {convo_excerpt}\n"""
-            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+You are a helpful medical assistant. Produce three example meals (Breakfast, Lunch, Dinner) tailored to the user's profile when present. For each meal include a one-line description, approximate serving size, and an estimated calorie range (e.g., 250-400 kcal). Keep it concise and skimmable.\n\nContext:\nUser question: '{last_message}'\nProfile: {json.dumps(profile)}\nPrevious memory: {prev_memory}\nRecent conversation excerpt: {convo_recent_str}\n"""
+            resp = await _llm_invoke(prompt)
             final_response = resp.content.strip()
         else:
             # Produce concise medical guidance + 1-2 short applicable tips (not always meals)
             prompt = f"""
-You are a concise medical assistant specializing in bariatric post-op care. Answer the user's question in 2-4 sentences and include 1-2 short actionable tips (behavioral, dietary, or activity) relevant to the query. Do NOT produce meal examples unless the user asks for them.\n\nUser question: '{last_message}'\nProfile: {json.dumps(profile)}\nPrevious memory: {prev_memory}\n"""
-            resp = await llm.ainvoke([HumanMessage(content=prompt)])
+You are a concise medical assistant specializing in bariatric post-op care. Answer the user's question in 2-4 sentences and include 1-2 short actionable tips (behavioral, dietary, or activity) relevant to the query. Do NOT produce meal examples unless the user asks for them.\n\nUser question: '{last_message}'\nProfile: {json.dumps(profile)}\nPrevious memory: {prev_memory}\nRecent conversation excerpt: {convo_recent_str}\n"""
+            resp = await _llm_invoke(prompt)
             final_response = resp.content.strip()
 
     # Append a context-aware follow-up (reuse the helper defined earlier if present)
@@ -343,6 +476,19 @@ You are a concise medical assistant specializing in bariatric post-op care. Answ
         pass
 
     print("--- ASSISTANT: Primary response created ---")
+
+    # If an early deterministic response was set (greeting/thanks/goodbye),
+    # prefer it only when the LLM produced an equally short/generic reply or
+    # nothing. This allows tools and LLM flow to run (so tool access isn't
+    # lost) but still returns a polite deterministic reply for pure greetings.
+    try:
+        if early_response:
+            low_final = (final_response or "").lower()
+            greeting_like = any(p in low_final for p in ["hello", "hi", "goodbye", "you're welcome", "thanks"]) or len(low_final.strip()) < 20
+            if not final_response or greeting_like:
+                final_response = early_response
+    except Exception:
+        pass
 
     # Deterministic allergy/disliked-foods filter (line-level removal)
     try:
@@ -385,6 +531,17 @@ You are a concise medical assistant specializing in bariatric post-op care. Answ
     except Exception as e:
         print(f"--- ASSISTANT: post-processing allergy filter failed: {e} ---")
 
+    # Make responses more conversational and ensure the assistant ends with a question
+    try:
+        import re as _re
+        low_resp = (final_response or "").lower()
+        # If assistant already asked a similar closing question, don't duplicate
+        if not no_closing_question and not _re.search(r"how else can i help|anything else i can|what else would you|anything else|is there anything else", low_resp):
+            # Append the closing question to encourage continuation
+            final_response = final_response + "\n\nHow else can I help?"
+    except Exception:
+        pass
+
     # Produce updated structured memory JSON via a second LLM call (keeps memory generation explicit)
     try:
         memory_prompt = (
@@ -425,12 +582,50 @@ You are a concise medical assistant specializing in bariatric post-op care. Answ
     except Exception:
         final_response_readme = f"# Assistant Response\n\n{final_response}"
 
-    return {
+    # Build an updated compact conversation_log (last 5 user prompts and assistant responses)
+    try:
+        parsed = json.loads(convo_excerpt) if isinstance(convo_excerpt, str) else (convo_excerpt or {})
+        if isinstance(parsed, dict):
+            recent_user = parsed.get("recent_user_prompts", []) or []
+            recent_assistant = parsed.get("recent_assistant_responses", []) or []
+        elif isinstance(parsed, list):
+            recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"]
+            recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"]
+        else:
+            recent_user = []
+            recent_assistant = []
+    except Exception:
+        recent_user = []
+        recent_assistant = []
+
+    # Append the current exchange and trim to last 5
+    try:
+        recent_user.append(last_message)
+    except Exception:
+        recent_user = [last_message]
+    try:
+        recent_assistant.append(final_response)
+    except Exception:
+        recent_assistant = [final_response]
+
+    recent_user = recent_user[-5:]
+    recent_assistant = recent_assistant[-5:]
+
+    new_log_obj = {"recent_user_prompts": recent_user, "recent_assistant_responses": recent_assistant}
+    try:
+        new_log_str = json.dumps(new_log_obj)
+    except Exception:
+        new_log_str = "[]"
+
+    response_state = {
         "final_response": final_response,
         "final_response_readme": final_response_readme,
         "memory": memory_summary,
-        "messages": messages + [AIMessage(content=final_response)]
+        "messages": messages + [AIMessage(content=final_response)],
+        "conversation_log": new_log_str,
     }
+
+    return response_state
 
 
 # ==========================================

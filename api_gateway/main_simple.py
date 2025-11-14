@@ -237,50 +237,59 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
                             await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory}, headers=headers)
                         else:
                             await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
-                # Also append this exchange to the conversation log so future
-                # chats can see the recent transcript. We'll fetch the existing
-                # log, append a new entry, and PUT it back.
+
+                # If the LLM returned an authoritative conversation_log, persist it directly
+                # (this allows the graph to control the canonical recent-5 transcript). Otherwise,
+                # fall back to the previous behavior of fetching and appending to the stored log.
                 try:
-                    final_resp = llm_result.get("response") or llm_result.get("final_response") or ""
-                    # Get existing log
-                    if headers:
-                        existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log", headers=headers)
-                    else:
-                        existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log")
-                    if existing.status_code == 200:
-                        log_json = existing.json().get("log", "[]")
-                    else:
-                        log_json = "[]"
-                    # Build new log array and append role-tagged entries (user then assistant)
-                    import json as _json
-                    try:
-                        parsed = _json.loads(log_json)
-                        # If storage has the new dict format, read arrays
-                        if isinstance(parsed, dict):
-                            recent_user = parsed.get("recent_user_prompts", []) or []
-                            recent_assistant = parsed.get("recent_assistant_responses", []) or []
-                        elif isinstance(parsed, list):
-                            # Legacy: convert list of role-tagged dicts into the new structure
-                            recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"][-5:]
-                            recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"][-5:]
+                    async with httpx.AsyncClient() as client2:
+                        headers = {"X-SERVICE-KEY": STORAGE_SERVICE_KEY} if STORAGE_SERVICE_KEY else None
+                        llm_log = llm_result.get("conversation_log")
+                        import json as _json
+                        if llm_log:
+                            # If the graph returned a dict, serialize it; if string, assume already serialized
+                            if isinstance(llm_log, dict):
+                                payload_log = _json.dumps(llm_log)
+                            else:
+                                payload_log = llm_log
+                            if headers:
+                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": payload_log}, headers=headers)
+                            else:
+                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": payload_log})
                         else:
-                            recent_user = []
-                            recent_assistant = []
-                    except Exception:
-                        recent_user = []
-                        recent_assistant = []
-                    # Append and trim to last 5
-                    from datetime import datetime
-                    recent_user.append(chat_data.message)
-                    recent_user = recent_user[-5:]
-                    recent_assistant.append(final_resp)
-                    recent_assistant = recent_assistant[-5:]
-                    new_log_obj = {"recent_user_prompts": recent_user, "recent_assistant_responses": recent_assistant}
-                    # PUT updated log (store as JSON string in the 'log' field to remain compatible)
-                    if headers:
-                        await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)}, headers=headers)
-                    else:
-                        await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)})
+                            # Fallback: append current exchange to stored log (legacy behavior)
+                            final_resp = llm_result.get("response") or llm_result.get("final_response") or ""
+                            if headers:
+                                existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log", headers=headers)
+                            else:
+                                existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log")
+                            if existing.status_code == 200:
+                                log_json = existing.json().get("log", "[]")
+                            else:
+                                log_json = "[]"
+                            try:
+                                parsed = _json.loads(log_json)
+                                if isinstance(parsed, dict):
+                                    recent_user = parsed.get("recent_user_prompts", []) or []
+                                    recent_assistant = parsed.get("recent_assistant_responses", []) or []
+                                elif isinstance(parsed, list):
+                                    recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"][-5:]
+                                    recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"][-5:]
+                                else:
+                                    recent_user = []
+                                    recent_assistant = []
+                            except Exception:
+                                recent_user = []
+                                recent_assistant = []
+                            recent_user.append(chat_data.message)
+                            recent_user = recent_user[-5:]
+                            recent_assistant.append(final_resp)
+                            recent_assistant = recent_assistant[-5:]
+                            new_log_obj = {"recent_user_prompts": recent_user, "recent_assistant_responses": recent_assistant}
+                            if headers:
+                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)}, headers=headers)
+                            else:
+                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)})
                 except Exception:
                     pass
             except Exception:
