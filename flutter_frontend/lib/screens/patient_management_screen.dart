@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/profile_service.dart'; // Make sure this path is correct
+import '../services/ai_service.dart';
 
 class PatientManagementScreen extends StatefulWidget {
   const PatientManagementScreen({Key? key}) : super(key: key);
@@ -103,6 +104,8 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
     });
   }
 
+  final AiService _aiService = AiService();
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -143,15 +146,34 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
 
     final result = await _profileService.updateProfile(profileToSave);
 
-    setState(() {
-      _saving = false;
-    });
-
     if (result['success'] == true) {
       _profile = profileToSave;
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Preferences saved')));
+      
+      // --- Update AI Context ---
+      try {
+        final aiMessage = "Update patient profile:\n"
+            "Height: ${_heightController.text} cm\n"
+            "Weight: ${_weightController.text} kg\n"
+            "DOB: ${_dobController.text}\n"
+            "Activity Level: $_selectedActivityLevel\n"
+            "Medical Conditions: ${_conditionsController.text}\n"
+            "Surgery Date: ${_surgeryDateController.text}\n"
+            "Disliked Foods: ${_dislikedController.text}\n"
+            "Allergies: ${_allergiesController.text}\n"
+            "Diet Type: ${_dietTypeController.text}";
+
+        await _aiService.sendMessage(message: aiMessage);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Preferences saved and AI updated')));
+        }
+      } catch (e) {
+        // Don't block UI if AI update fails, but maybe log it
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Preferences saved (AI update failed)')));
+        }
       }
     } else {
       if (mounted) {
@@ -159,6 +181,10 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
             SnackBar(content: Text(result['error'] ?? 'Failed to save profile')));
       }
     }
+
+    setState(() {
+      _saving = false;
+    });
   }
 
   // Helper for section headings
