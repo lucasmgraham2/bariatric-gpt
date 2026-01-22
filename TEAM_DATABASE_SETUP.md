@@ -1,6 +1,6 @@
 # Team Database Setup Guide
 
-## 🎯 **For New Team Members**
+## For New Team Members
 
 ### Windows Users:
 1. **Clone the repository**
@@ -38,22 +38,22 @@
    GRANT ALL PRIVILEGES ON DATABASE bariatric_db TO bariatric_user;
    ```
 
-## 🗂️ **What's Shared vs Local**
+## What's Shared vs Local
 
-### ✅ **Shared in Git** (Team assets):
+### Shared in Git (Team assets):
 - Database schema (auto-created by FastAPI)
 - Setup scripts (`setup_windows_postgres.bat`, `setup_windows_postgres.sql`)
 - Documentation (this file)
 - Application code
 - Migration scripts (future)
 
-### ❌ **NOT in Git** (Local only):
+### NOT in Git (Local only):
 - Actual database files (`.gitignore`d)
 - User data and passwords
 - Local configuration files
 - Environment-specific settings
 
-## 🔄 **Data Sharing Strategies**
+## Data Sharing Strategies
 
 ### For Development:
 1. **Each developer has their own local database**
@@ -65,7 +65,7 @@
 - Separate staging/production environments
 - Proper backup and restore procedures
 
-## 📝 **Sample Data Script**
+## Sample Data Script
 ```python
 # scripts/create_sample_users.py
 import requests
@@ -80,7 +80,7 @@ for user in users:
     print(f"Created user: {user['username']} - {response.status_code}")
 ```
 
-## 🔐 **Security Notes**
+## Security Notes
 - Change default passwords in production
 - Use environment variables for sensitive config
 - Never commit real user data

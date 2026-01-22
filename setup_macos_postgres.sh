@@ -37,7 +37,7 @@ psql postgres -c "CREATE DATABASE bariatric_db OWNER bariatric_user;"
 psql postgres -c "GRANT ALL PRIVILEGES ON DATABASE bariatric_db TO bariatric_user;"
 
 echo
-echo "✅ PostgreSQL setup complete!"
+echo "PostgreSQL setup complete!"
 echo "Database: bariatric_db"
 echo "User: bariatric_user"
 echo "Password: bariatric_password"

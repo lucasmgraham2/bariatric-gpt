@@ -38,12 +38,16 @@ class AiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Prefer Markdown-formatted response if available, otherwise plain text.
-        final plain = data['final_response'] ?? data['response'] ?? '';
-        final markdown = data['final_response_readme'] ?? data['final_response_markdown'];
+        // New API returns `response_markdown` and `response_text` (and `response` may prefer markdown).
+        // Keep backward compatibility with older keys like `final_response` and `final_response_readme`.
+        final markdown = data['response_markdown'] ?? data['final_response_readme'] ?? data['final_response_markdown'] ?? data['response'];
+        final plain = data['response_text'] ?? data['final_response'] ?? data['response'] ?? '';
+
         return {
           'success': true,
+          // `response` kept for compatibility with UI code that expects a `response` field.
           'response': plain,
+          // `response_markdown` contains the markdown (or null if not provided).
           'response_markdown': markdown,
         };
       } else if (response.statusCode == 401) {

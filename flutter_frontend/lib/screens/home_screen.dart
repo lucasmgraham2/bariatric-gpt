@@ -3,6 +3,8 @@ import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/screens/login_screen.dart';
 import 'package:bariatric_gpt/screens/settings_screen.dart';
 import 'package:bariatric_gpt/screens/ai_assistant_screen.dart';
+import 'package:bariatric_gpt/screens/person_management_screen.dart';
+import 'package:bariatric_gpt/screens/reports_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,11 +17,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final _authService = AuthService();
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
+  int _currentIndex = 0;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
     _loadUserProfile();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserProfile() async {
@@ -41,11 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final titles = ['AI Assistant', 'People', 'Reports', 'Settings'];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bariatric GPT'),
+        title: Text(titles[_currentIndex]),
         centerTitle: true,
-        automaticallyImplyLeading: false, // Remove back button
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -63,155 +75,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(fontSize: 16),
                   ),
                 )
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Welcome back!',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildInfoRow('Username', _userProfile!['username']),
-                              _buildInfoRow('Email', _userProfile!['email']),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Features',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: GridView.count(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          children: [
-                            _buildFeatureCard(
-                              'Patient Management',
-                              Icons.people,
-                              'Manage patient records securely',
-                              () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Feature coming soon!')),
-                                );
-                              },
-                            ),
-                            _buildFeatureCard(
-                              'AI Assistant',
-                              Icons.psychology,
-                              'Get AI-powered insights',
-                              () {
-                                // ScaffoldMessenger.of(context).showSnackBar(
-                                //   const SnackBar(content: Text('Feature coming soon!')),
-                                // );
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (context) => const AiAssistantScreen()),
-                                );
-                              },
-                            ),
-                            _buildFeatureCard(
-                              'Reports',
-                              Icons.analytics,
-                              'View detailed reports',
-                              () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Feature coming soon!')),
-                                );
-                              },
-                            ),
-                            _buildFeatureCard(
-                              'Settings',
-                              Icons.settings,
-                              'Configure your preferences',
-                              () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+              : PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  children: const [
+                    AiAssistantScreen(),
+                    PersonManagementScreen(),
+                    ReportsScreen(),
+                    SettingsScreen(),
+                  ],
                 ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        height: 70,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+          );
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.psychology_outlined), selectedIcon: Icon(Icons.psychology), label: 'Assistant'),
+          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'People'),
+          NavigationDestination(icon: Icon(Icons.insert_chart_outlined), selectedIcon: Icon(Icons.insert_chart), label: 'Reports'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
         ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard(String title, IconData icon, String description, VoidCallback onTap) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 48,
-                color: Theme.of(context).primaryColor,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

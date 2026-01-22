@@ -27,10 +27,10 @@ async def invoke_chat(request: ChatRequest):
     """
     
     print(f"\n{'='*60}")
-    print(f"📨 New Chat Request from user: {request.user_id}")
-    print(f"💬 Message: {request.message}")
-    print(f"🏥 Patient ID: {request.patient_id if request.patient_id else 'None'}")
-    print(f"👤 Profile sent: {request.profile if request.profile else 'None'}")
+    print(f"New Chat Request from user: {request.user_id}")
+    print(f"Message: {request.message}")
+    print(f"Patient ID: {request.patient_id if request.patient_id else 'None'}")
+    print(f"Profile sent: {request.profile if request.profile else 'None'}")
     print(f"{'='*60}\n")
     
     # 1. Define the initial state for the multi-agent graph
@@ -52,13 +52,19 @@ async def invoke_chat(request: ChatRequest):
         # The graph will automatically route through supervisor → agents → synthesizer
         result_state = await app.ainvoke(initial_state)
 
-        # 3. Extract the final synthesized response and updated memory
+        # 3. Extract the final synthesized response (plain and Markdown) and updated memory
         final_answer = result_state.get("final_response")
+        final_answer_readme = result_state.get("final_response_readme")
         updated_memory = result_state.get("memory")
 
+        # Robust fallback: prefer the graph's message if final_response missing
+        if not final_answer and result_state.get("messages"):
+            try:
+                final_answer = result_state["messages"][-1].content
+            except Exception:
+                final_answer = None
         if not final_answer:
-            # Fallback if synthesis failed
-            final_answer = result_state["messages"][-1].content if result_state["messages"] else "I couldn't process that request."
+            final_answer = "I couldn't process that request."
         
         print(f"\n{'='*60}")
         print(f"✅ Response generated successfully")
@@ -66,7 +72,15 @@ async def invoke_chat(request: ChatRequest):
         print(f"{'='*60}\n")
         
         # Include updated memory and conversation_log (if any) so the gateway can persist them
-        resp = {"response": final_answer}
+        # Provide both Markdown (`response_markdown`) and plain-text (`response_text`).
+        # Prefer Markdown for the primary `response` when available so frontends
+        # that render Markdown can display rich formatting. Frontends that do not
+        # render Markdown can use `response_text`.
+        resp = {
+            "response": final_answer_readme if final_answer_readme else final_answer,
+            "response_markdown": final_answer_readme,
+            "response_text": final_answer,
+        }
         if updated_memory is not None:
             resp["memory"] = updated_memory
         # If the agent graph returned a compact conversation_log, include it in the response

@@ -62,7 +62,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         }
       } else {
         _messages.add(ChatMessage(
-          text: '❌ Error: ${result['error']}',
+          text: 'Error: ${result['error']}',
           isUser: false,
         ));
       }

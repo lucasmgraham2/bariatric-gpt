@@ -53,7 +53,7 @@ python scripts/create_sample_data.py
 - **LLM Service**: Multi-agent AI system with medical expertise (Port 8001)
 - **Flutter Frontend**: Mobile application with authentication and AI chat
 
-### 🤖 **NEW: Multi-Agent AI System**
+### NEW: Multi-Agent AI System
 The app now includes an intelligent medical assistant that uses multiple specialized agents:
 - **Supervisor**: Routes queries to appropriate specialists
 - **Medical Agent**: Answers medical questions and provides guidance

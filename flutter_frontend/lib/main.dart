@@ -23,14 +23,109 @@ class MyApp extends StatelessWidget {
       // 3. Set the themeMode, theme, and darkTheme properties
       themeMode: themeProvider.themeMode,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.light,
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF1A1A1A), // Near black
+          secondary: Color(0xFF6366F1), // Indigo accent
+          tertiary: Color(0xFF10B981), // Emerald for success
+          surface: Color(0xFFFAFAFA), // Off-white
+          background: Color(0xFFFFFFFF), // Pure white
+          error: Color(0xFFEF4444), // Red for errors
+          onPrimary: Colors.white,
+          onSecondary: Colors.white,
+          onSurface: Color(0xFF1A1A1A),
+          onBackground: Color(0xFF1A1A1A),
+        ),
+        useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        scaffoldBackgroundColor: const Color(0xFFFAFAFA),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1A1A1A),
+          elevation: 0,
+          centerTitle: true,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            backgroundColor: const Color(0xFF1A1A1A),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1A1A1A),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF6366F1),
+          ),
+        ),
+        iconTheme: const IconThemeData(
+          color: Color(0xFF6366F1),
+        ),
       ),
       darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          secondary: Color(0xFF818CF8), // Lighter indigo
+          tertiary: Color(0xFF34D399), // Lighter emerald
+          surface: Color(0xFF1A1A1A),
+          background: Color(0xFF0A0A0A),
+          error: Color(0xFFF87171),
+          onPrimary: Color(0xFF1A1A1A),
+          onSecondary: Color(0xFF1A1A1A),
+          onSurface: Colors.white,
+          onBackground: Colors.white,
+        ),
+        useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1A1A1A),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        cardTheme: CardThemeData(
+          color: const Color(0xFF1A1A1A),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.grey.shade800, width: 1),
+          ),
+        ),
       ),
       // 4. Use your existing AuthWrapper as the home widget
       home: const AuthWrapper(),

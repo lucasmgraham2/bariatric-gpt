@@ -91,13 +91,13 @@ for patient in sample_patients:
         patient["bmi"],
         patient["status"]
     ))
-    print(f"✅ Created patient: {patient['name']}")
+    print(f"Created patient: {patient['name']}")
 
 conn.commit()
 cursor.close()
 conn.close()
 
-print("\n✅ Sample patient data created successfully!")
+print("\nSample patient data created successfully!")
 print("\nTest patient IDs: 1, 2, 3, 4")
 print("\nExample AI queries:")
 print("- 'What's patient 1's current weight?'")

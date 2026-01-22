@@ -1,6 +1,6 @@
-# 🤖 Multi-Agent Medical Assistant System - Setup Guide
+# Multi-Agent Medical Assistant System - Setup Guide
 
-## 🎯 Quick Start
+## Quick Start
 
 ### 1. **Install Ollama** (If not already installed)
 ```bash
@@ -11,7 +11,7 @@ ollama pull deepseek-r1:8b
 
 ### 2. **Setup Database with Sample Patients**
 ```markdown
-# 🤖 AI Medical Assistant - Setup & Notes (Updated)
+# AI Medical Assistant - Setup & Notes (Updated)
 
 This document replaces the older "multi-agent" design notes. The system has been simplified to a compact, more deterministic flow to improve reliability and maintainability while preserving the same capabilities:
 
@@ -22,7 +22,7 @@ This document replaces the older "multi-agent" design notes. The system has been
 
 ---
 
-## 🎯 Quick Start
+## Quick Start
 
 ### 1. Install Ollama (if using local models)
 ```powershell
@@ -64,7 +64,7 @@ flutter run
 
 ---
 
-## 🏗️ Current Architecture (Simplified)
+## Current Architecture (Simplified)
 
 ```
 FLUTTER FRONTEND (UI)
@@ -91,7 +91,7 @@ Key differences from the original multi-agent design:
 
 ---
 
-## 💬 How the chat flow works (summary)
+## How the chat flow works (summary)
 
 1. Frontend posts a message to `/chat` on the API Gateway.
 2. Gateway loads the user's `profile`, `memory`, and the compact `conversation_log` (rolling last-5 user prompts + last-5 assistant responses) and builds the initial state.
@@ -112,7 +112,7 @@ Key differences from the original multi-agent design:
 
 ---
 
-## � Example interactions (now)
+## Example interactions (now)
 
 User: "Which of these sounds best? 1) Chicken salad, 2) Vegetable quinoa bowl, 3) Lentil soup"
 Assistant (initial): "1) Chicken salad — high protein, light dressing\n2) Vegetable quinoa bowl — balanced, vegan-friendly\n3) Lentil soup — hearty, good fiber"
@@ -128,7 +128,7 @@ Note: If the preprocessor cannot confidently map the ordinal (no parseable optio
 
 ---
 
-## 🧠 Memory & Conversation Log
+## Memory & Conversation Log
 
 - Conversation log storage format (stored as JSON string in the DB):
 
@@ -143,14 +143,14 @@ Note: If the preprocessor cannot confidently map the ordinal (no parseable optio
 
 ---
 
-## 🔒 Deterministic Protections
+## Deterministic Protections
 
 - Allergy / disliked-food enforcement is performed deterministically after the assistant response: any lines containing exact word-boundary matches of recorded allergies/dislikes are removed. If all suggestions are removed the assistant returns a short note and asks for permission or requests alternative constraints.
 - Service-key protected endpoints: only internal services with the correct service key may read/modify memory or conversation logs.
 
 ---
 
-## � Troubleshooting & Performance notes
+## Troubleshooting & Performance notes
 
 - LLM responses may still take several seconds depending on model & hardware. The simplified single-node flow reduces hops and generally improves latency vs a multi-node orchestration.
 - If shorthand replies (ordinals) are misinterpreted, check the `conversation_log` stored in the account to ensure the assistant's last message contains parseable enumerations (numbered lines, bullets, or an inline "Options:" list).
@@ -158,7 +158,7 @@ Note: If the preprocessor cannot confidently map the ordinal (no parseable optio
 
 ---
 
-## � Files of interest (where behavior lives)
+## Files of interest (where behavior lives)
 
 ```
 llm_service/
@@ -184,7 +184,7 @@ scripts/
 
 ---
 
-## ✅ Success Indicators (updated)
+## Success Indicators (updated)
 
 You should see:
 

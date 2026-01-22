@@ -39,12 +39,12 @@ def create_sample_users():
             
             if response.status_code == 200:
                 result = response.json()
-                print(f"✅ Created user: {user['username']} (ID: {result.get('user_id')})")
+                print(f"Created user: {user['username']} (ID: {result.get('user_id')})")
             else:
-                print(f"❌ Failed to create {user['username']}: {response.text}")
+                print(f"Failed to create {user['username']}: {response.text}")
                 
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error creating {user['username']}: {e}")
+            print(f"Error creating {user['username']}: {e}")
     
     print("\nSample data creation complete!")
     print("You can now test login with any of these accounts:")
@@ -52,7 +52,7 @@ def create_sample_users():
         print(f"  Username: {user['username']}, Password: {user['password']}")
 
 if __name__ == "__main__":
-    print("🗂️  Bariatric GPT Sample Data Creator")
+    print("Bariatric GPT Sample Data Creator")
     print("Make sure your services are running:")
     print("  - Storage Service: http://localhost:8002")  
     print("  - API Gateway: http://localhost:8000")
