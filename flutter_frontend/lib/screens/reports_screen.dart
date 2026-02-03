@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'protein_report_screen.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -6,6 +7,12 @@ class ReportsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cards = [
+      _ReportTile(
+        title: 'Protein Tracker',
+        description: 'Monitor your daily protein intake and goals.',
+        icon: Icons.fitness_center,
+        screen: const ProteinReportScreen(),
+      ),
       _ReportTile(
         title: 'Weekly Progress',
         description: 'Summaries of weight, activity, and adherence.',
@@ -34,13 +41,6 @@ class ReportsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Reports', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            const Text(
-              'A concise view of outcomes and activity. Tap a card to preview reporting (coming soon).',
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 16),
             Expanded(
               child: ListView.separated(
                 itemCount: cards.length,
@@ -62,11 +62,13 @@ class _ReportTile {
   final String title;
   final String description;
   final IconData icon;
+  final Widget? screen;
 
   const _ReportTile({
     required this.title,
     required this.description,
     required this.icon,
+    this.screen,
   });
 }
 
@@ -89,9 +91,15 @@ class _ReportCard extends StatelessWidget {
         subtitle: Text(tile.description),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${tile.title} coming soon.')),
-          );
+          if (tile.screen != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => tile.screen!),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${tile.title} coming soon.')),
+            );
+          }
         },
       ),
     );

@@ -5,6 +5,7 @@ import 'package:bariatric_gpt/screens/settings_screen.dart';
 import 'package:bariatric_gpt/screens/ai_assistant_screen.dart';
 import 'package:bariatric_gpt/screens/person_management_screen.dart';
 import 'package:bariatric_gpt/screens/reports_screen.dart';
+import 'package:bariatric_gpt/screens/meals_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,19 +53,105 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final titles = ['AI Assistant', 'People', 'Reports', 'Settings'];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titles = ['AI Assistant', 'Profile', 'Meals', 'Reports'];
+    final subtitles = [
+      'Your AI health companion',
+      'Health profile & tracking',
+      'Daily nutrition log',
+      'Progress & insights',
+    ];
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text(titles[_currentIndex]),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Logout',
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF312e81), Color(0xFF4c1d95)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          subtitles[_currentIndex],
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.75),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          titles[_currentIndex],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.settings_outlined, color: Colors.white, size: 20),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                            );
+                          },
+                          tooltip: 'Settings',
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                          onPressed: _logout,
+                          tooltip: 'Logout',
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -85,13 +172,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: const [
                     AiAssistantScreen(),
                     PersonManagementScreen(),
+                    MealsScreen(),
                     ReportsScreen(),
-                    SettingsScreen(),
                   ],
                 ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         height: 70,
+        indicatorColor: const Color(0xFF4c1d95),
         onDestinationSelected: (index) {
           setState(() {
             _currentIndex = index;
@@ -104,9 +192,9 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.psychology_outlined), selectedIcon: Icon(Icons.psychology), label: 'Assistant'),
-          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'People'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.restaurant_menu_outlined), selectedIcon: Icon(Icons.restaurant_menu), label: 'Meals'),
           NavigationDestination(icon: Icon(Icons.insert_chart_outlined), selectedIcon: Icon(Icons.insert_chart), label: 'Reports'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );

@@ -86,9 +86,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Assistant'),
-      ),
       body: Column(
         children: [
           // Chat messages

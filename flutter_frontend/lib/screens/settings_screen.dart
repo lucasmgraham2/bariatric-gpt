@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:bariatric_gpt/providers/theme_provider.dart';
 import 'package:bariatric_gpt/services/auth_service.dart';
 import 'package:bariatric_gpt/services/settings_service.dart'; // Import new service
 import 'package:bariatric_gpt/screens/login_screen.dart';
@@ -131,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // Show a dialog to change the theme
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(
+                      builder: (dialogContext) => AlertDialog(
                         title: const Text('Choose Theme'),
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -140,11 +142,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               title: const Text('Light Mode'),
                               value: ThemeMode.light,
                               groupValue: _themeMode,
-                              onChanged: (ThemeMode? value) async {
+                              onChanged: (ThemeMode? value) {
                                 if (value != null) {
-                                  await _settingsService.setThemeMode(value);
+                                  Provider.of<ThemeProvider>(context, listen: false).setTheme(value);
                                   setState(() => _themeMode = value);
-                                  Navigator.of(context).pop();
+                                  Navigator.of(dialogContext).pop();
                                 }
                               },
                             ),
@@ -152,23 +154,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               title: const Text('Dark Mode'),
                               value: ThemeMode.dark,
                               groupValue: _themeMode,
-                              onChanged: (ThemeMode? value) async {
+                              onChanged: (ThemeMode? value) {
                                 if (value != null) {
-                                  await _settingsService.setThemeMode(value);
+                                  Provider.of<ThemeProvider>(context, listen: false).setTheme(value);
                                   setState(() => _themeMode = value);
-                                  Navigator.of(context).pop();
-                                }
-                              },
-                            ),
-                             RadioListTile<ThemeMode>(
-                              title: const Text('System Default'),
-                              value: ThemeMode.system,
-                              groupValue: _themeMode,
-                              onChanged: (ThemeMode? value) async {
-                                if (value != null) {
-                                  await _settingsService.setThemeMode(value);
-                                  setState(() => _themeMode = value);
-                                  Navigator.of(context).pop();
+                                  Navigator.of(dialogContext).pop();
                                 }
                               },
                             ),

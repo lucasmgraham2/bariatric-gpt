@@ -9,7 +9,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, END
-from .tools import get_patient_data
+from .tools import get_patient_data, record_meal
 import json
 
 # Feature flag: disable patient tools until profile data is implemented
@@ -294,7 +294,8 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     is_calorie = any(k in low for k in ["calorie", "calories", "calorie breakdown"]) or "calorie" in low
     is_recipe = any(k in low for k in ["recipe", "how to make", "how do i make", "cook", "instructions"]) or "recipe" in low
     is_profile = any(k in low for k in ["what are my food preferences", "my profile", "what is my profile", "what are my allergies", "do i have any allergies"]) 
-    wants_meals = any(k in low for k in ["meal", "meals", "lunch", "dinner", "breakfast", "meal ideas", "suggest" ,"suggestions"]) and not is_grocery and not is_recipe
+    is_record_meal = any(k in low for k in ["record", "ate", "had", "consumed", "log meal", "add meal", "track meal", "i ate", "i had", "i just ate", "i just had"])
+    wants_meals = any(k in low for k in ["meal", "meals", "lunch", "dinner", "breakfast", "meal ideas", "suggest" ,"suggestions"]) and not is_grocery and not is_recipe and not is_record_meal
 
     # Politeness and conversational cues
     greetings = ("hi", "hello", "hey", "good morning", "good afternoon", "good evening")
@@ -433,6 +434,77 @@ async def assistant_agent(state: MultiAgentState) -> dict:
             "If you have questions about recovery, diet, meals, activity, or surgery-specific concerns, "
             "please ask and I will do my best to help. For other topics, I am not able to assist."
         )
+    elif is_record_meal:
+        # User wants to log a meal - extract food items and estimate protein/calories
+        user_id = state.get("user_id")
+        
+        if not user_id:
+            final_response = "I couldn't identify your user ID. Please try again or contact support."
+        else:
+            # Use LLM to extract meal details and estimate nutrition
+            nutrition_prompt = f"""
+You are a nutrition expert. The user said: "{last_message}"
+
+Extract the meal/food items mentioned and provide realistic estimates for:
+1. A concise meal description (e.g., "Chicken breast and rice")
+2. Total protein in grams
+3. Total calories
+
+Format your response EXACTLY as:
+MEAL: [description]
+PROTEIN: [number]
+CALORIES: [number]
+
+For example:
+MEAL: Grilled chicken breast and brown rice
+PROTEIN: 45
+CALORIES: 380
+
+Be realistic with portion sizes for post-bariatric patients (typically smaller portions).
+"""
+            try:
+                nutrition_resp = await llm.ainvoke([HumanMessage(content=nutrition_prompt)])
+                nutrition_text = nutrition_resp.content.strip()
+                
+                # Parse the response
+                import re
+                meal_match = re.search(r'MEAL:\s*(.+)', nutrition_text)
+                protein_match = re.search(r'PROTEIN:\s*(\d+(?:\.\d+)?)', nutrition_text)
+                calories_match = re.search(r'CALORIES:\s*(\d+(?:\.\d+)?)', nutrition_text)
+                
+                if meal_match and protein_match and calories_match:
+                    meal_name = meal_match.group(1).strip()
+                    protein_grams = float(protein_match.group(1))
+                    calories = float(calories_match.group(1))
+                    
+                    # Call the record_meal tool
+                    result = await record_meal.ainvoke({
+                        "user_id": user_id,
+                        "meal_name": meal_name,
+                        "protein_grams": protein_grams,
+                        "calories": calories
+                    })
+                    
+                    if result.get("success"):
+                        final_response = (
+                            f"✅ Recorded your meal!\n\n"
+                            f"**{meal_name}**\n"
+                            f"• Protein: {protein_grams}g\n"
+                            f"• Calories: {calories}\n\n"
+                            f"Your daily protein total is now **{result.get('protein_total', 0)}g**. "
+                            f"You've logged {result.get('meal_count', 0)} meal(s) today.\n\n"
+                            f"Great job tracking your nutrition! Would you like to log anything else?"
+                        )
+                    else:
+                        final_response = f"I had trouble recording your meal: {result.get('error', 'Unknown error')}. Please try again."
+                else:
+                    final_response = (
+                        "I couldn't quite understand what you ate. Could you be more specific? "
+                        "For example: 'I ate a chicken breast and a cup of rice' or 'I had scrambled eggs and toast'."
+                    )
+            except Exception as e:
+                print(f"--- Error recording meal: {e} ---")
+                final_response = f"I had trouble processing your meal. Error: {str(e)}"
     elif is_grocery:
         # Produce a consolidated grocery list based on the most recent assistant meal suggestions
         if recent_assistant:
