@@ -241,7 +241,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Enter your info for accurate protein calculations',
                           style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
                         ),

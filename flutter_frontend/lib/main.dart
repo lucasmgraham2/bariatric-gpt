@@ -27,13 +27,11 @@ class MyApp extends StatelessWidget {
           primary: Color(0xFF1A1A1A), // Near black
           secondary: Color(0xFF6366F1), // Indigo accent
           tertiary: Color(0xFF10B981), // Emerald for success
-          surface: Color(0xFFFAFAFA), // Off-white
-          background: Color(0xFFFFFFFF), // Pure white
+          surface: Color(0xFFFAFAFA), // Pure white
           error: Color(0xFFEF4444), // Red for errors
           onPrimary: Colors.white,
           onSecondary: Colors.white,
           onSurface: Color(0xFF1A1A1A),
-          onBackground: Color(0xFF1A1A1A),
         ),
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -102,12 +100,10 @@ class MyApp extends StatelessWidget {
           secondary: Color(0xFF818CF8), // Lighter indigo
           tertiary: Color(0xFF34D399), // Lighter emerald
           surface: Color(0xFF1A1A1A),
-          background: Color(0xFF0A0A0A),
           error: Color(0xFFF87171),
           onPrimary: Color(0xFF1A1A1A),
           onSecondary: Color(0xFF1A1A1A),
           onSurface: Colors.white,
-          onBackground: Colors.white,
         ),
         useMaterial3: true,
         visualDensity: VisualDensity.adaptivePlatformDensity,

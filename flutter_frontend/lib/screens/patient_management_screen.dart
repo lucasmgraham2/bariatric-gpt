@@ -4,7 +4,7 @@ import '../services/profile_service.dart'; // Make sure this path is correct
 import '../services/ai_service.dart';
 
 class PatientManagementScreen extends StatefulWidget {
-  const PatientManagementScreen({Key? key}) : super(key: key);
+  const PatientManagementScreen({super.key});
 
   @override
   _PatientManagementScreenState createState() =>
@@ -268,7 +268,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                   ),
                    const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _selectedActivityLevel,
+                    initialValue: _selectedActivityLevel,
                     decoration: const InputDecoration(labelText: 'Activity Level'),
                     hint: const Text('Select your activity level'),
                     isExpanded: true,

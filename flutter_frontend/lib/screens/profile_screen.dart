@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/profile_service.dart'; // Make sure this path is correct
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();

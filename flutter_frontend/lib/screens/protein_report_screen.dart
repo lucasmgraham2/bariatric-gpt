@@ -167,7 +167,7 @@ class _ProteinReportScreenState extends State<ProteinReportScreen> {
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Track your protein intake to meet your personalized daily goal.',
                         style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
                       ),

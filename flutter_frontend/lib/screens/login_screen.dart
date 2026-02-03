@@ -55,15 +55,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white,
-              Colors.grey.shade50,
+              isDark ? colorScheme.surface : Colors.white,
+              isDark ? colorScheme.surfaceVariant : Colors.grey.shade50,
             ],
           ),
         ),

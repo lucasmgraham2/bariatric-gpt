@@ -67,11 +67,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       required VoidCallback onTap,
       String? subtitle,
     }) {
+      final iconColor = Theme.of(context).colorScheme.onSurfaceVariant;
       return ListTile(
-        leading: Icon(icon, color: Theme.of(context).primaryColor),
+        leading: Icon(icon, color: iconColor),
         title: Text(title),
         subtitle: subtitle != null ? Text(subtitle) : null,
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: iconColor),
         onTap: onTap,
       );
     }
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Text('Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
                 SwitchListTile(
-                  secondary: Icon(Icons.notifications_outlined, color: Theme.of(context).primaryColor),
+                  secondary: Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   title: const Text('Enable Notifications'),
                   value: _notificationsEnabled,
                   onChanged: (bool value) async {
