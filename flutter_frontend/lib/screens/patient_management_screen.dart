@@ -39,6 +39,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
   final TextEditingController _dietTypeController = TextEditingController();
   final TextEditingController _dislikedController = TextEditingController();
   final TextEditingController _surgeryDateController = TextEditingController();
+  List<String> _medications = [];
 
   @override
   void initState() {
@@ -92,6 +93,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
       final sd = _profile['surgery_date'];
       _surgeryDateController.text = sd != null ? sd.toString() : '';
 
+      // Load Medications
+      _medications = List<String>.from(_profile['medications'] ?? []);
+
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +147,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
         .toList();
     profileToSave['diet_type'] = _dietTypeController.text.trim();
     profileToSave['surgery_date'] = _surgeryDateController.text.trim();
+    profileToSave['medications'] = _medications;
 
     final result = await _profileService.updateProfile(profileToSave);
 
@@ -160,6 +165,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
             "Surgery Date: ${_surgeryDateController.text}\n"
             "Disliked Foods: ${_dislikedController.text}\n"
             "Allergies: ${_allergiesController.text}\n"
+            "Meds: ${_medications.join(', ')}\n"
             "Diet Type: ${_dietTypeController.text}";
 
         await _aiService.sendMessage(message: aiMessage);
@@ -312,6 +318,58 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                       hintText: 'Comma-separated, e.g., diabetes, hypertension'
                     ),
                     textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSectionHeader('Daily Medications & Supplements'),
+                  ..._medications.map((med) => ListTile(
+                        title: Text(med),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              _medications.remove(med);
+                            });
+                          },
+                        ),
+                      )),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          String newMed = '';
+                          return AlertDialog(
+                            title: const Text('Add Medication/Supplement'),
+                            content: TextField(
+                              autofocus: true,
+                              decoration: const InputDecoration(
+                                  hintText: 'e.g., Multivitamin, 1/day'),
+                              onChanged: (val) => newMed = val,
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  if (newMed.trim().isNotEmpty) {
+                                    setState(() {
+                                      _medications.add(newMed.trim());
+                                    });
+                                  }
+                                  Navigator.pop(context);
+                                },
+                                child: const Text('Add'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Medication'),
+                  ),
                   ),
                   
                   // --- PREFERENCES SECTION ---

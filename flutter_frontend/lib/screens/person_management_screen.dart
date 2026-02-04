@@ -17,7 +17,9 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
   bool _medNotify = true;
 
   final _symptomsController = TextEditingController();
-  final List<Map<String, String>> _meds = [];
+  
+  // Changed to simple string list to match backend schema
+  List<String> _meds = [];
 
   // Food preferences controllers
   final TextEditingController _allergiesController = TextEditingController();
@@ -27,6 +29,8 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
   // Biometric data for protein calculation
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _surgeryDateController = TextEditingController();
+  
   String? _selectedActivityLevel;
   String _weightUnit = 'kg'; // 'kg' or 'lbs'
   final List<String> _activityLevels = [
@@ -61,6 +65,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
     _dislikedController.dispose();
     _weightController.dispose();
     _dobController.dispose();
+    _surgeryDateController.dispose();
     super.dispose();
   }
 
@@ -70,6 +75,8 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
     });
 
     final result = await _profileService.fetchProfile();
+
+    if (!mounted) return;
 
     if (result['success'] == true) {
       _profile = Map<String, dynamic>.from(result['profile'] ?? {});
@@ -83,6 +90,11 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
       // Load biometric data
       _weightController.text = (_profile['weight'] ?? '').toString();
       _dobController.text = (_profile['date_of_birth'] ?? '') as String;
+      _surgeryDateController.text = (_profile['surgery_date'] ?? '') as String;
+      
+      // Load Meds
+      _meds = List<String>.from(_profile['medications'] ?? []);
+      
       _selectedActivityLevel = _profile['activity_level'] as String?;
       _weightUnit = (_profile['weight_unit'] ?? 'kg') as String;
       if (_selectedActivityLevel != null &&
@@ -96,9 +108,11 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
       }
     }
 
-    setState(() {
-      _loadingPreferences = false;
-    });
+    if (mounted) {
+      setState(() {
+        _loadingPreferences = false;
+      });
+    }
   }
 
   Future<void> _saveFoodPreferences() async {
@@ -124,19 +138,23 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
     profileToSave['weight'] = double.tryParse(_weightController.text.trim());
     profileToSave['weight_unit'] = _weightUnit;
     profileToSave['date_of_birth'] = _dobController.text.trim();
+    profileToSave['surgery_date'] = _surgeryDateController.text.trim();
     profileToSave['activity_level'] = _selectedActivityLevel;
+    profileToSave['medications'] = _meds;
 
     final result = await _profileService.updateProfile(profileToSave);
+
+    if (!mounted) return;
 
     if (result['success'] == true) {
       _profile = profileToSave;
       
       // Update AI Context
       try {
-        final aiMessage = "Update patient dietary preferences:\n"
-            "Disliked Foods: ${_dislikedController.text}\n"
-            "Allergies: ${_allergiesController.text}\n"
-            "Diet Type: ${_dietTypeController.text}";
+        final aiMessage = "Update patient profile:\n"
+            "Weight: ${_weightController.text} $_weightUnit\n"
+            "Meds: ${_meds.join(', ')}\n"
+            "Surgery Date: ${_surgeryDateController.text}";
 
         await _aiService.sendMessage(message: aiMessage);
         
@@ -157,9 +175,11 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
       }
     }
 
-    setState(() {
-      _savingPreferences = false;
-    });
+    if (mounted) {
+      setState(() {
+        _savingPreferences = false;
+      });
+    }
   }
 
   void _addMedication() {
@@ -167,29 +187,27 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
     final dose = _medDoseController.text.trim();
     final freq = _medFreqController.text.trim();
     final time = _medTimeController.text.trim();
-    if (name.isEmpty || freq.isEmpty || time.isEmpty) {
+    if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a name, frequency, and timing.')),
+        const SnackBar(content: Text('Please enter a medication name.')),
       );
       return;
     }
+    
+    // Formatted string
+    final medString = "$name${dose.isNotEmpty ? ' ($dose)' : ''}${freq.isNotEmpty ? ' $freq' : ''}";
+    
     setState(() {
-      _meds.add({
-        'name': name,
-        'dose': dose,
-        'freq': freq,
-        'time': time,
-        'notify': _medNotify ? 'On' : 'Off',
-      });
+      _meds.add(medString);
       _medNameController.clear();
       _medDoseController.clear();
       _medFreqController.clear();
       _medTimeController.clear();
       _medNotify = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Medication saved locally. Connect backend to persist.')),
-    );
+    
+    // Auto-save
+    _saveFoodPreferences();
   }
 
   @override
@@ -199,7 +217,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Info note about AI integration
+            // Info note
             Container(
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 16),
@@ -221,11 +239,10 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'This information will be used by the AI to provide you with accurate, personalized help and advice.',
+                      'Information entered here helps the AI provide safe advice.',
                       style: TextStyle(
                         fontSize: 14,
                         color: Theme.of(context).textTheme.bodyLarge?.color,
-                        height: 1.4,
                       ),
                     ),
                   ),
@@ -233,7 +250,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
               ),
             ),
             
-            // 1. Profile for Protein Goals (Most Important)
+            // 1. Profile Section
             _sectionCard(
               title: 'Profile for Protein Goals',
               child: _loadingPreferences
@@ -241,13 +258,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Enter your info for accurate protein calculations',
-                          style: TextStyle(fontSize: 14, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
-                        ),
-                        const SizedBox(height: 12),
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               flex: 3,
@@ -255,8 +266,6 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                                 controller: _weightController,
                                 decoration: InputDecoration(
                                   labelText: 'Weight ($_weightUnit)',
-                                  hintText: _weightUnit == 'kg' ? 'e.g., 75' : 'e.g., 165',
-                                  prefixIcon: const Icon(Icons.monitor_weight),
                                 ),
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               ),
@@ -285,8 +294,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                           readOnly: true,
                           decoration: const InputDecoration(
                             labelText: 'Date of Birth',
-                            hintText: 'Tap to pick date',
-                            prefixIcon: Icon(Icons.cake),
+                            suffixIcon: Icon(Icons.cake),
                           ),
                           onTap: () async {
                             final picked = await showDatePicker(
@@ -303,18 +311,36 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                           },
                         ),
                         const SizedBox(height: 12),
+                        TextField(
+                          controller: _surgeryDateController,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Surgery Date',
+                            suffixIcon: Icon(Icons.calendar_today),
+                          ),
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.tryParse(_surgeryDateController.text) ?? DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _surgeryDateController.text = picked.toIso8601String().split('T').first;
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           value: _selectedActivityLevel,
-                          decoration: const InputDecoration(
-                            labelText: 'Activity Level',
-                            prefixIcon: Icon(Icons.directions_run),
-                          ),
-                          hint: const Text('Select your activity level'),
+                          decoration: const InputDecoration(labelText: 'Activity Level'),
                           isExpanded: true,
                           items: _activityLevels.map((String level) {
                             return DropdownMenuItem<String>(
                               value: level,
-                              child: Text(level, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                              child: Text(level, overflow: TextOverflow.ellipsis, maxLines: 1),
                             );
                           }).toList(),
                           onChanged: (newValue) {
@@ -328,16 +354,7 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
                           alignment: Alignment.centerRight,
                           child: ElevatedButton.icon(
                             onPressed: _savingPreferences ? null : _saveFoodPreferences,
-                            icon: _savingPreferences
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_outlined),
+                            icon: const Icon(Icons.save),
                             label: const Text('Save'),
                           ),
                         ),
@@ -349,125 +366,79 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
             // 2. Food Preferences
             _sectionCard(
               title: 'Food Preferences',
-              child: _loadingPreferences
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _dislikedController,
-                          decoration: const InputDecoration(
-                            labelText: 'Foods you dislike',
-                            hintText: 'Comma-separated, e.g., broccoli, liver',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _allergiesController,
-                          decoration: const InputDecoration(
-                            labelText: 'Allergies / Intolerances',
-                            hintText: 'Comma-separated, e.g., nuts, dairy',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _dietTypeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Diet Type',
-                            hintText: 'e.g., vegetarian, omnivore',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton.icon(
-                            onPressed: _savingPreferences ? null : _saveFoodPreferences,
-                            icon: _savingPreferences
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_outlined),
-                            label: const Text('Save'),
-                          ),
-                        ),
-                      ],
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _dislikedController,
+                    decoration: const InputDecoration(labelText: 'Foods you dislike'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _allergiesController,
+                    decoration: const InputDecoration(labelText: 'Allergies'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _dietTypeController,
+                    decoration: const InputDecoration(labelText: 'Diet Type'),
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      onPressed: _savingPreferences ? null : _saveFoodPreferences,
+                      icon: const Icon(Icons.save),
+                      label: const Text('Save'),
                     ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             
-            // 3. Daily Meds / Supplements
+            // 3. Meds
             _sectionCard(
               title: 'Daily Meds / Supplements',
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  TextField(
+                    controller: _medNameController,
+                    decoration: const InputDecoration(labelText: 'Medication Name'),
+                  ),
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
-                          controller: _medNameController,
-                          decoration: const InputDecoration(labelText: 'Name (e.g., Vitamin D)'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 140,
                         child: TextField(
                           controller: _medDoseController,
                           decoration: const InputDecoration(labelText: 'Dose'),
                         ),
                       ),
-                    ],
-                  ),
-                  Row(
-                    children: [
+                      const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
                           controller: _medFreqController,
-                          decoration: const InputDecoration(labelText: 'Frequency (e.g., 2x/day)'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 140,
-                        child: TextField(
-                          controller: _medTimeController,
-                          decoration: const InputDecoration(labelText: 'Timing (e.g., morning)'),
+                          decoration: const InputDecoration(labelText: 'Freq'),
                         ),
                       ),
                     ],
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Enable reminders/notifications'),
-                    value: _medNotify,
-                    onChanged: (v) => setState(() => _medNotify = v),
-                  ),
+                  const SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
                       onPressed: _addMedication,
-                      icon: const Icon(Icons.save_outlined),
-                      label: const Text('Save'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add & Save'),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   if (_meds.isNotEmpty)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Saved items', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        ..._meds.map((m) => _medRow(m)),
-                      ],
+                      children: _meds.map((m) => _medRow(m)).toList(),
                     )
                   else
-                    const Text('No meds added yet.'),
+                    const Text('No medications added.'),
                 ],
               ),
             ),
@@ -529,31 +500,27 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
     );
   }
 
-  Widget _medRow(Map<String, String> med) {
+  Widget _medRow(String med) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade700 : Colors.grey.shade200),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(med['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 4),
-                Text('${med['dose']?.isNotEmpty == true ? '${med['dose']!} • ' : ''}${med['freq'] ?? ''}'),
-                Text('Timing: ${med['time'] ?? ''}'),
-              ],
-            ),
-          ),
-          Chip(
-            label: Text('Notifications ${med['notify']}'),
-            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade100,
+          Expanded(child: Text(med, style: const TextStyle(fontWeight: FontWeight.w500))),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: () {
+              setState(() {
+                _meds.remove(med);
+              });
+              _saveFoodPreferences();
+            },
           ),
         ],
       ),

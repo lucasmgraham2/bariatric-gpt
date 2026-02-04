@@ -5,6 +5,9 @@
 pgdata/
 postgres_data/
 /data/
+chroma_db/
+**/chroma_db/
+
 
 # Environment files with sensitive info
 .env

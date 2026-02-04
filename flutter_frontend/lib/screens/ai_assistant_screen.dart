@@ -3,15 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:bariatric_gpt/services/ai_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
-// A simple model for a chat message
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final bool isMarkdown;
-
-  ChatMessage({required this.text, required this.isUser, this.isMarkdown = false});
-}
-
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
 
@@ -23,9 +14,17 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AiService _aiService = AiService();
-  final List<ChatMessage> _messages = [];
   bool _isTyping = false;
   final FocusNode _textFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Scroll to bottom on load if we have history
+    if (_aiService.messages.isNotEmpty) {
+      _scrollToBottom();
+    }
+  }
 
   @override
   void dispose() {
@@ -39,29 +38,33 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    // Add user message to list
+    // Add user message to persistent history
+    final userMsg = ChatMessage(text: text, isUser: true);
+    _aiService.addMessage(userMsg);
+
     setState(() {
-      _messages.add(ChatMessage(text: text, isUser: true));
       _isTyping = true;
     });
 
     _textController.clear();
     _scrollToBottom();
 
-    // Call AI service (patient ID will be linked to user credentials later)
+    // Call AI service
     final result = await _aiService.sendMessage(message: text);
 
     setState(() {
       _isTyping = false;
       if (result['success']) {
         final md = result['response_markdown'];
-        if (md != null && md is String && md.isNotEmpty) {
-          _messages.add(ChatMessage(text: md, isUser: false, isMarkdown: true));
-        } else {
-          _messages.add(ChatMessage(text: result['response'] ?? '', isUser: false));
-        }
+        final plain = result['response'] ?? '';
+        
+        final responseArgs = (md != null && md is String && md.isNotEmpty)
+            ? ChatMessage(text: md, isUser: false, isMarkdown: true)
+            : ChatMessage(text: plain, isUser: false, isMarkdown: false);
+            
+        _aiService.addMessage(responseArgs);
       } else {
-        _messages.add(ChatMessage(
+        _aiService.addMessage(ChatMessage(
           text: 'Error: ${result['error']}',
           isUser: false,
         ));
@@ -85,20 +88,37 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Access the persistent messages directly
+    final messages = _aiService.messages;
+
     return Scaffold(
       body: Column(
         children: [
           // Chat messages
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return _buildMessageBubble(message);
-              },
-            ),
+            child: messages.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Start a conversation...',
+                          style: TextStyle(color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return _buildMessageBubble(message);
+                    },
+                  ),
           ),
           // "Typing" indicator
           if (_isTyping)
@@ -155,6 +175,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                       styleSheet: MarkdownStyleSheet(
                         p: TextStyle(color: textColor, fontSize: 16),
                         h1: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                        h2: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                        // Adjust other styles as needed for dark/light mode
                       ),
                     )
                   : Text(

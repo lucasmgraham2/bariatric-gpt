@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
-from .graph_medical_multiagent import app  # Import the multi-agent graph
+from .graph_medical_multiagent import app, generate_and_persist_memory  # Import the multi-agent graph
 from langchain_core.messages import HumanMessage
 
 router = APIRouter()
@@ -17,7 +17,7 @@ class ChatRequest(BaseModel):
     debug: Optional[bool] = False
 
 @router.post("/invoke_agent_graph")
-async def invoke_chat(request: ChatRequest):
+async def invoke_chat(request: ChatRequest, background_tasks: BackgroundTasks):
     """
     Receives a user message and runs it through the Multi-Agent Medical System.
     The system automatically routes queries to appropriate specialist agents.
@@ -83,6 +83,18 @@ async def invoke_chat(request: ChatRequest):
         }
         if updated_memory is not None:
             resp["memory"] = updated_memory
+        
+        # Schedule Async Memory Update
+        # Only trigger if we have a valid response and userID.
+        # This will run AFTER the response is sent to the user.
+        if final_answer and request.user_id:
+            background_tasks.add_task(
+                generate_and_persist_memory,
+                user_id=request.user_id,
+                prev_memory=request.memory if request.memory else "",
+                last_message=request.message,
+                assistant_response=final_answer
+            )
         # If the agent graph returned a compact conversation_log, include it in the response
         # so the gateway can persist the authoritative recent-5 transcript.
         conv_log = result_state.get("conversation_log")

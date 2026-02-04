@@ -2,8 +2,35 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Model for chat messages
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final bool isMarkdown;
+
+  ChatMessage({required this.text, required this.isUser, this.isMarkdown = false});
+}
+
 class AiService {
   static const String baseUrl = 'http://localhost:8000';
+  
+  // Singleton-like state for the active session
+  // This persists as long as the app is running (and service is kept alive)
+  // In standard Flutter (GetIt/Provider), this would be a singleton.
+  // Here we'll make the list static or assume AiService is reused. 
+  // Since AiService is instantiated in screens, let's make the storage static for simplicity 
+  // to guarantee persistence without a DI framework.
+  static final List<ChatMessage> _sessionMessages = [];
+  
+  List<ChatMessage> get messages => List.unmodifiable(_sessionMessages);
+  
+  void addMessage(ChatMessage msg) {
+    _sessionMessages.add(msg);
+  }
+
+  void clearHistory() {
+    _sessionMessages.clear();
+  }
 
   /// Send a message to the AI assistant
   /// Patient ID will be automatically linked to user credentials in the future
