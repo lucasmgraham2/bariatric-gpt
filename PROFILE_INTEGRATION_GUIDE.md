@@ -1,19 +1,19 @@
 # Profile Integration Guide
 
-This guide explains how to add user profile and patient data integration to the chat system.
+Guide for linking user accounts with patient profiles to enable personalized medical data access.
 
-## Current State
+## Current Status
 
-What Works Now:
-- Users can chat with AI assistant about general bariatric surgery topics
-- Authentication system tracks user_id
-- Patient data tools exist but are disabled (feature flag)
-- System is fast with llama3.2:3b model (5-10 second responses)
+**Working:**
+- User authentication and account management
+- AI chat with general bariatric surgery knowledge
+- Patient data tools (currently disabled by feature flag)
+- Fast responses with deepseek-r1:8b model
 
-What's Not Connected Yet:
-- Patient profiles aren't linked to user accounts
-- Chat doesn't access personal medical data
-- Patient ID input removed from UI (ready for auto-linking)
+**Not Yet Enabled:**
+- User accounts linked to patient profiles
+- Chat access to personal medical data
+- Patient ID auto-linking (UI removed, ready for backend integration)
 
 ---
 

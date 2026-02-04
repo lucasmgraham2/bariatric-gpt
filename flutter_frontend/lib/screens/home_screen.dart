@@ -53,7 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final titles = ['AI Assistant', 'Profile', 'Meals', 'Reports'];
     final subtitles = [
       'Your AI health companion',

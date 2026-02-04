@@ -35,25 +35,48 @@ class _ProteinReportScreenState extends State<ProteinReportScreen> {
     if (result['success'] == true) {
       final profile = Map<String, dynamic>.from(result['profile'] ?? {});
       
-      // Get consumed protein
-      _proteinConsumed = (profile['protein_today'] ?? 0).toDouble();
-      
-      // Calculate protein goal based on weight, height, age
-      _proteinGoal = _calculateProteinGoal(profile);
-      
-      // Load protein history
-      final historyData = profile['protein_history'] as Map<String, dynamic>?;
-      if (historyData != null) {
-        _proteinHistory = historyData.map((key, value) => 
-          MapEntry(key, (value as num).toDouble())
-        );
-      } else {
-        _proteinHistory = {};
-      }
-      
-      // Add today's data if not already there
+      // Check if it's a new day
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      _proteinHistory[today] = _proteinConsumed;
+      final lastMealDate = profile['last_meal_date'] as String?;
+      
+      if (lastMealDate != null && lastMealDate != today) {
+        // New day detected - save yesterday's protein to history and clear meals
+        await _handleNewDay(profile, lastMealDate);
+        // Reload profile after handling new day
+        final newResult = await _profileService.fetchProfile();
+        if (newResult['success'] == true) {
+          final newProfile = Map<String, dynamic>.from(newResult['profile'] ?? {});
+          _proteinConsumed = (newProfile['protein_today'] ?? 0).toDouble();
+          _proteinGoal = _calculateProteinGoal(newProfile);
+          
+          final historyData = newProfile['protein_history'] as Map<String, dynamic>?;
+          if (historyData != null) {
+            _proteinHistory = historyData.map((key, value) => 
+              MapEntry(key, (value as num).toDouble())
+            );
+          } else {
+            _proteinHistory = {};
+          }
+          _proteinHistory[today] = _proteinConsumed;
+        }
+      } else {
+        // Same day - just load data
+        _proteinConsumed = (profile['protein_today'] ?? 0).toDouble();
+        _proteinGoal = _calculateProteinGoal(profile);
+        
+        // Load protein history
+        final historyData = profile['protein_history'] as Map<String, dynamic>?;
+        if (historyData != null) {
+          _proteinHistory = historyData.map((key, value) => 
+            MapEntry(key, (value as num).toDouble())
+          );
+        } else {
+          _proteinHistory = {};
+        }
+        
+        // Add today's data if not already there
+        _proteinHistory[today] = _proteinConsumed;
+      }
     } else {
       _errorMessage = result['error'] ?? 'Failed to load profile';
     }
@@ -61,6 +84,26 @@ class _ProteinReportScreenState extends State<ProteinReportScreen> {
     setState(() {
       _loading = false;
     });
+  }
+  
+  Future<void> _handleNewDay(Map<String, dynamic> profile, String previousDate) async {
+    // Get yesterday's total protein
+    final yesterdayProtein = (profile['protein_today'] ?? 0).toDouble();
+    
+    // Save to protein history
+    Map<String, dynamic> proteinHistory = {};
+    if (profile['protein_history'] != null) {
+      proteinHistory = Map<String, dynamic>.from(profile['protein_history']);
+    }
+    proteinHistory[previousDate] = yesterdayProtein;
+    
+    // Update profile with cleared data for new day
+    profile['protein_history'] = proteinHistory;
+    profile['todays_meals'] = [];
+    profile['protein_today'] = 0;
+    profile['last_meal_date'] = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    
+    await _profileService.updateProfile(profile);
   }
 
   double _calculateProteinGoal(Map<String, dynamic> profile) {

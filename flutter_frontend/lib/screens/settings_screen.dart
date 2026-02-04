@@ -53,7 +53,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case ThemeMode.dark:
         return 'Dark Mode';
       case ThemeMode.system:
-      default:
         return 'System Default';
     }
   }

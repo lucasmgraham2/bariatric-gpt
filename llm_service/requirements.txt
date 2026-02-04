@@ -5,5 +5,8 @@ langchain
 langchain-core
 langchain-community
 langchain-ollama
+langchain-text-splitters
 langgraph
 psycopg2-binary
+chromadb
+pypdf

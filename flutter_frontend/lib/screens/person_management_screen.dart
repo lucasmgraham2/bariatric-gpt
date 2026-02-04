@@ -14,7 +14,6 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
   final _medDoseController = TextEditingController();
   final _medFreqController = TextEditingController();
   final _medTimeController = TextEditingController();
-  bool _medNotify = true;
 
   final _symptomsController = TextEditingController();
   
@@ -186,7 +185,6 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
     final name = _medNameController.text.trim();
     final dose = _medDoseController.text.trim();
     final freq = _medFreqController.text.trim();
-    final time = _medTimeController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a medication name.')),
@@ -203,7 +201,6 @@ class _PersonManagementScreenState extends State<PersonManagementScreen> {
       _medDoseController.clear();
       _medFreqController.clear();
       _medTimeController.clear();
-      _medNotify = true;
     });
     
     // Auto-save

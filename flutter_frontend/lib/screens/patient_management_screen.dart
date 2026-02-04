@@ -370,7 +370,6 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                     icon: const Icon(Icons.add),
                     label: const Text('Add Medication'),
                   ),
-                  ),
                   
                   // --- PREFERENCES SECTION ---
                   _buildSectionHeader('Dietary Preferences'),

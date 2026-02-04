@@ -67,8 +67,8 @@ async def invoke_chat(request: ChatRequest, background_tasks: BackgroundTasks):
             final_answer = "I couldn't process that request."
         
         print(f"\n{'='*60}")
-        print(f"✅ Response generated successfully")
-        print(f"📤 Sending response back to user")
+        print(f"Response generated successfully")
+        print(f"Sending response back to user")
         print(f"{'='*60}\n")
         
         # Include updated memory and conversation_log (if any) so the gateway can persist them
@@ -109,7 +109,7 @@ async def invoke_chat(request: ChatRequest, background_tasks: BackgroundTasks):
     
     except Exception as e:
         print(f"\n{'='*60}")
-        print(f"❌ ERROR invoking multi-agent graph: {e}")
+        print(f"ERROR: ERROR invoking multi-agent graph: {e}")
         print(f"{'='*60}\n")
         # Friendly fallback so the app can always show a response
         fallback = (

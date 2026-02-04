@@ -1,91 +1,125 @@
 # Bariatric GPT
 
-A simplified medical application with authentication and Flutter frontend.
+AI-powered bariatric care assistant with multi-agent medical expertise, user authentication, and Flutter mobile app.
+
+## Prerequisites
+
+**Required Downloads:**
+1. **Python 3.9+** - [Download here](https://www.python.org/downloads/)
+2. **Flutter SDK** - [Download here](https://docs.flutter.dev/get-started/install)
+3. **Ollama** - [Download here](https://ollama.com/download)
+4. **PostgreSQL 14+** - [Download here](https://www.postgresql.org/download/) (or use auto-setup)
 
 ## Quick Setup
 
-### 1. Database Setup
-
-**Windows:**
-```bash
-setup_windows_postgres.bat
+### 1. Install Ollama Model
+```powershell
+# Download the LLM model (required for AI features)
+ollama pull deepseek-r1:8b
 ```
 
-**macOS:**
+### 2. Setup Database
+
+**Windows:**
+```powershell
+.\setup_windows_postgres.bat
+```
+
+**macOS/Linux:**
 ```bash
 chmod +x setup_macos_postgres.sh
 ./setup_macos_postgres.sh
 ```
 
-**What this creates:**
+This creates:
 - Database: `bariatric_db`
 - User: `bariatric_user`
 - Password: `bariatric_password`
-- Host: `localhost`
 - Port: `5432`
 
-### 2. Start Services
-```bash
+### 3. Install Python Dependencies
+```powershell
+# Install for all services
+pip install -r api_gateway/requirements.txt
+pip install -r storage_service/requirements.txt
+pip install -r llm_service/requirements.txt
+```
+
+### 4. Install Flutter Dependencies
+```powershell
+cd flutter_frontend
+flutter pub get
+```
+
+### 5. Start All Services
+
+**Easiest Option (Windows):**
+```powershell
+.\run_all_services.bat
+```
+
+**Manual Option (Any OS):**
+```powershell
 # Terminal 1 - Storage Service (Port 8002)
 python storage_service/main_simple.py
 
-# Terminal 2 - API Gateway (Port 8000)  
+# Terminal 2 - API Gateway (Port 8000)
 python api_gateway/main_simple.py
 
-# Terminal 3 - Flutter App
+# Terminal 3 - LLM Service (Port 8001)
+cd llm_service
+python main_simple.py
+
+# Terminal 4 - Flutter App
 cd flutter_frontend
-flutter run
-
-# Terminal 4 - LLM Serivce
-uvicorn llm_service.app.main:app --host 0.0.0.0 --port 8001 --reload
-```
-
-### 3. Test the Setup
-Create sample users (optional):
-```bash
-python scripts/create_sample_data.py
+flutter run -d chrome
 ```
 
 ## Architecture
 
-- **Storage Service**: User authentication and patient data management (PostgreSQL)
-- **API Gateway**: API orchestration, token management, and chat routing
-- **LLM Service**: Multi-agent AI system with medical expertise (Port 8001)
-- **Flutter Frontend**: Mobile application with authentication and AI chat
+```
+Flutter App → API Gateway (8000) → Storage Service (8002) [PostgreSQL]
+                    ↓
+              LLM Service (8001) [Ollama + LangGraph]
+```
 
-### NEW: Multi-Agent AI System
-The app now includes an intelligent medical assistant that uses multiple specialized agents:
-- **Supervisor**: Routes queries to appropriate specialists
-- **Medical Agent**: Answers medical questions and provides guidance
-- **Data Agent**: Retrieves patient information from database
-- **Synthesizer**: Combines responses into coherent answers
+**Components:**
+- **Storage Service**: PostgreSQL-backed user auth and patient data
+- **API Gateway**: Request routing, token management, context assembly
+- **LLM Service**: Multi-agent AI system with RAG knowledge retrieval
+- **Flutter Frontend**: Cross-platform mobile/web UI
 
-See **[MULTI_AGENT_SETUP.md](MULTI_AGENT_SETUP.md)** for complete setup and usage guide.
+## Features
 
-## API Endpoints
+- User authentication and profile management
+- AI chat with medical expertise (bariatric surgery focus)
+- Patient data management and meal logging
+- Knowledge retrieval from medical documents (RAG)
+- Allergen-aware meal suggestions
+- Conversation memory and context tracking
 
-- `POST /auth/register` - Create new user account
-- `POST /auth/login` - User authentication
-- `GET /auth/me` - Get current user profile
-- `POST /auth/logout` - User logout
-
-## Requirements
-
-- **Python 3.7+** with pip
-- **PostgreSQL 14+** (auto-installed by setup scripts)
-- **Flutter SDK** for mobile development
+## Optional: Sample Data
+```powershell
+python scripts/create_sample_data.py
+python scripts/create_sample_patients.py
+```
 
 ## Troubleshooting
 
-**Database Connection Issues:**
-- Ensure PostgreSQL service is running
-- Check credentials match: `bariatric_user` / `bariatric_password`
+**Ollama Model Not Found:**
+```powershell
+ollama pull deepseek-r1:8b
+```
 
-**Port Conflicts:**
-- Storage Service: Port 8002
-- API Gateway: Port 8000
-- Make sure these ports are available
+**Database Connection Failed:**
+- Ensure PostgreSQL is running
+- Verify credentials: `bariatric_user` / `bariatric_password`
 
-## Team Development
+**Port Already in Use:**
+- Check ports 8000, 8001, 8002 are available
+- Kill conflicting processes or modify port configs
 
-See `TEAM_DATABASE_SETUP.md` for detailed setup instructions and team collaboration guidelines.
+## Documentation
+
+- [Team Setup Guide](TEAM_DATABASE_SETUP.md) - Team collaboration and database setup
+- [Profile Integration](PROFILE_INTEGRATION_GUIDE.md) - Linking patient profiles to users

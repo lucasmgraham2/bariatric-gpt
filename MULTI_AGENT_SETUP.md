@@ -1,102 +1,88 @@
-# Multi-Agent Medical Assistant System - Setup Guide
+# Multi-Agent Medical Assistant - Architecture Guide
+
+## Overview
+
+This system uses a simplified multi-agent pipeline with LangGraph and Ollama to provide intelligent bariatric care assistance.
 
 ## Quick Start
 
-### 1. **Install Ollama** (If not already installed)
-```bash
-# Download from: https://ollama.com/download
-# Pull the model we're using:
+### 1. Install Ollama Model
+```powershell
+# Download Ollama from: https://ollama.com/download
+# Then pull the required model:
 ollama pull deepseek-r1:8b
 ```
 
-### 2. **Setup Database with Sample Patients**
-```markdown
-# AI Medical Assistant - Setup & Notes (Updated)
-
-This document replaces the older "multi-agent" design notes. The system has been simplified to a compact, more deterministic flow to improve reliability and maintainability while preserving the same capabilities:
-
-- A small preprocessor expands shorthand user replies ("the second option", "2nd", "that one").
-- A single consolidated assistant node handles intent detection, optional patient-data access, meal suggestions, medical guidance, deterministic allergen filtering, and memory generation.
-- Conversation history is stored as a compact rolling snippet (last 5 user prompts + last 5 assistant responses) and is supplied to the assistant for context.
-- The assistant returns both plain text and a Markdown/README-formatted response so frontends can render bold/headers/lists correctly.
-
----
-
-## Quick Start
-
-### 1. Install Ollama (if using local models)
+### 2. Create Sample Data (Optional)
 ```powershell
-# Download/install from: https://ollama.com/download
-# Pull the model used for local testing (optional):
-ollama pull deepseek-r1:8b
-```
-
-### 2. Populate sample data (optional)
-```powershell
-# Ensure PostgreSQL is running
 python scripts/create_sample_patients.py
 ```
 
-### 3. Start services (typical)
-Open terminals and run the services you need. Example commands:
-
-Terminal 1 - Storage Service (Port 8002)
+### 3. Start Services
 ```powershell
-python storage_service/main_simple.py
-```
+# Option 1: Use the batch script (Windows)
+.\run_all_services.bat
 
-Terminal 2 - LLM Service (Port 8001)
-```powershell
-cd llm_service
-python -m app.main
-```
-
-Terminal 3 - API Gateway (Port 8000)
-```powershell
-python api_gateway/main_simple.py
-```
-
-Terminal 4 - Flutter App
-```powershell
-cd flutter_frontend
-flutter run
+# Option 2: Manual start
+python storage_service/main_simple.py    # Port 8002
+python api_gateway/main_simple.py        # Port 8000
+cd llm_service && python main_simple.py  # Port 8001
+cd flutter_frontend && flutter run       # UI
 ```
 
 ---
 
-## Current Architecture (Simplified)
+## Architecture
 
 ```
-FLUTTER FRONTEND (UI)
-  • Chat screen -> sends /chat requests to API Gateway
-        ↓ HTTP
-API GATEWAY (Port 8000)
-  • Auth proxy, fetches profile/memory/conversation_log
-  • Forwards message + compact context to LLM Service
-        ↓ HTTP
-LLM SERVICE (Port 8001)
-  • Preprocessor (expands short replies / resolves ordinals)
-  • Assistant Agent (single node): intent detection, optional patient tools,
-    deterministic allergy/dislike filtering, generates memory JSON,
-    and produces two response formats (plain text + Markdown/README)
-        ↓
-STORAGE SERVICE (Port 8002)
-  • PostgreSQL-backed storage for users, profiles, memory, conversation_log
+Flutter UI
+    ↓ POST /chat
+API Gateway (8000)
+  • Authenticates user
+  • Fetches profile + memory + conversation log
+  • Forwards context to LLM Service
+    ↓
+LLM Service (8001)
+  • Preprocessor: Expands shorthand replies ("2nd option", "that one")
+  • Assistant Agent: Intent detection, patient tools, allergen filtering
+  • Generates memory JSON and formatted response
+    ↓
+Storage Service (8002)
+  • PostgreSQL: users, profiles, memory, conversation logs
 ```
 
-Key differences from the original multi-agent design:
-- The previous Supervisor → Medical/Data → Synthesizer chain has been consolidated.
-- A deterministic preprocessor now handles shorthand expansion before the assistant.
-- Memory generation is still explicit: the assistant produces a JSON memory object which the API Gateway stores on the account (server-side-only access).
+### Key Components
+
+**Preprocessor:**
+- Expands shorthand user input ("the second option" → actual meal name)
+- Resolves ordinals using previous assistant response as context
+
+**Assistant Agent:**
+- Detects intent (meal logging, calorie breakdown, recipe, medical Q&A)
+- Accesses patient data when needed
+- Filters allergens/dislikes deterministically
+- Generates conversation memory (JSON format)
+- Returns both plain text and Markdown responses
+
+**Memory System:**
+- Rolling window: last 5 user messages + last 5 assistant responses
+- Server-side only (not exposed to client)
+- Updated after each conversation turn
 
 ---
 
-## How the chat flow works (summary)
+## How Chat Works
 
-1. Frontend posts a message to `/chat` on the API Gateway.
-2. Gateway loads the user's `profile`, `memory`, and the compact `conversation_log` (rolling last-5 user prompts + last-5 assistant responses) and builds the initial state.
-3. LLM Service runs the preprocessor to expand shorthand replies (ordinals, "that one", simple yes/no) using the most recent assistant text as context.
-4. The assistant agent runs once and:
+1. User sends message via Flutter app
+2. API Gateway authenticates and loads user context:
+   - Profile (allergies, preferences, surgery date)
+   - Memory (conversation summary)
+   - Conversation log (recent messages)
+3. LLM Service processes:
+   - Preprocessor expands shorthand
+   - Assistant agent runs with full context
+   - Generates response + memory update
+4. API Gateway stores memory and returns response
    - Detects intent (grocery list, calorie breakdown, recipe, profile query, meal suggestions, or general medical guidance).
    - Optionally calls a patient data tool when enabled and when patient_id is present.
    - Produces a concise, safe response.

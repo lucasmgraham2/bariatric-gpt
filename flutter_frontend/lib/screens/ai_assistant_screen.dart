@@ -10,16 +10,22 @@ class AiAssistantScreen extends StatefulWidget {
   State<AiAssistantScreen> createState() => _AiAssistantScreenState();
 }
 
-class _AiAssistantScreenState extends State<AiAssistantScreen> {
+class _AiAssistantScreenState extends State<AiAssistantScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AiService _aiService = AiService();
   bool _isTyping = false;
   final FocusNode _textFocusNode = FocusNode();
+  late final AnimationController _typingController;
 
   @override
   void initState() {
     super.initState();
+    _typingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
     // Scroll to bottom on load if we have history
     if (_aiService.messages.isNotEmpty) {
       _scrollToBottom();
@@ -31,6 +37,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _textFocusNode.dispose();
+    _typingController.dispose();
     super.dispose();
   }
 
@@ -121,21 +128,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   ),
           ),
           // "Typing" indicator
-          if (_isTyping)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 8),
-                  Text('AI is typing...'),
-                ],
-              ),
-            ),
+          if (_isTyping) _buildTypingIndicator(),
           // Text input field
           _buildTextInputArea(),
         ],
@@ -253,6 +246,51 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             onPressed: _sendMessage,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    final dotColor = Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6) ?? Colors.grey;
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          const SizedBox(width: 4),
+          AnimatedBuilder(
+            animation: _typingController,
+            builder: (context, child) {
+              final t = _typingController.value;
+              double dotOpacity(double offset) {
+                final v = (t + offset) % 1.0;
+                return (0.3 + 0.7 * (1 - (v - 0.5).abs() * 2)).clamp(0.3, 1.0);
+              }
+
+              return Row(
+                children: [
+                  _dot(dotColor.withOpacity(dotOpacity(0.0))),
+                  const SizedBox(width: 6),
+                  _dot(dotColor.withOpacity(dotOpacity(0.2))),
+                  const SizedBox(width: 6),
+                  _dot(dotColor.withOpacity(dotOpacity(0.4))),
+                  const SizedBox(width: 10),
+                  Text('Thinking...', style: TextStyle(color: dotColor)),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dot(Color color) {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
       ),
     );
   }

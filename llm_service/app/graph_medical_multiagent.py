@@ -8,6 +8,7 @@ Uses LangGraph to coordinate multiple specialized agents in a sequential pipelin
 """
 
 import os
+import re
 from datetime import datetime
 from typing import TypedDict, List, Optional
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -16,6 +17,10 @@ from langgraph.graph import StateGraph, END
 from .tools import get_patient_data, record_meal
 from .rag import query_knowledge
 import json
+import httpx
+
+# Service URLs
+STORAGE_URL = os.getenv("STORAGE_URL", "http://localhost:8002")
 
 # ==========================================
 # 1. DEFINE STATE
@@ -36,8 +41,17 @@ class MultiAgentState(TypedDict):
 # 2. SETUP LLM
 # ==========================================
 
-# Using local Ollama model (gemma3:1b or llama3 recommended)
-llm = ChatOllama(model="llama3", temperature=0)
+# Using local Ollama model (llama3) with tighter limits for faster responses
+llm = ChatOllama(
+    model="llama3",
+    temperature=0,
+    num_ctx=2048,
+    num_predict=200
+)
+
+# Performance tuning
+RAG_RESULTS = 1
+MAX_GUIDELINE_CHARS = 250
 
 SYSTEM_PERSONA = (
     "You are a warm, empathetic bariatric care assistant. You speak naturally, like a knowledgeable friend. "
@@ -97,14 +111,12 @@ async def generate_and_persist_memory(user_id: str, prev_memory: str, last_messa
         elif "```" in new_memory:
             new_memory = new_memory.split("```")[1].split("```")[0].strip()
 
-        # Save to Storage Service (Hardcoded URL for now)
-        import httpx
-        STORAGE_URL = "http://localhost:8002" 
+        # Save to Storage Service
         async with httpx.AsyncClient() as client:
             await client.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
         
     except Exception as e:
-        print(f"❌ Memory update failed: {e}")
+        print(f"ERROR: Memory update failed: {e}")
 
 # ==========================================
 # 4. AGENTS
@@ -112,21 +124,8 @@ async def generate_and_persist_memory(user_id: str, prev_memory: str, last_messa
 
 # 4.1 PREPROCESSOR
 async def preprocessor_agent(state: MultiAgentState) -> dict:
-    """Expands shorthand user replies."""
-    messages = state.get("messages", [])
-    if not messages:
-        return {}
-    
-    last_user = messages[-1].content.strip()
-    # Simple heuristic for shorthand
-    tokens = last_user.lower().split()
-    is_shorthand = len(tokens) <= 3 and any(t in ["yes", "no", "1", "2", "option"] for t in tokens)
-    
-    if is_shorthand:
-        # Just pass through for now, or implement expansion if needed. 
-        # For this refactor, we focus on the core pipeline.
-        pass
-        
+    """Preprocesses user input (currently pass-through)."""
+    # Could expand shorthand replies here in the future
     return {}
 
 # 4.2 RESEARCHER (RAG)
@@ -137,12 +136,14 @@ async def research_agent(state: MultiAgentState) -> dict:
         return {"clinical_context": ""}
         
     last_message = messages[-1].content
-    # Skip casual greetings
-    if len(last_message) < 5 or last_message.lower().strip() in ["hi", "hello", "thanks"]:
+    low = last_message.lower().strip()
+    # Skip casual or short queries to save latency
+    skip_prefixes = ["hi", "hello", "thanks", "thank you", "bye"]
+    if len(last_message) < 12 or any(low.startswith(p) for p in skip_prefixes):
         return {"clinical_context": ""}
         
     print(f"--- RESEARCHER: Searching knowledge for '{last_message}' ---")
-    context = query_knowledge(last_message, n_results=5)
+    context = query_knowledge(last_message, n_results=RAG_RESULTS)
     
     if context:
         print(f"--- RESEARCHER: Found {len(context)} chars of context ---")
@@ -164,40 +165,87 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
     profile = state.get("profile") or {}
     data_response = ""
 
-    is_record_meal = any(k in low for k in ["log meal", "track meal", "record meal", "add meal", "i ate", "i had", "i just ate"]) and len(low) > 10
     is_profile_request = any(k in low for k in ["my profile", "my stats", "surgery date", "allergies"])
     
-    # 1. Logging
-    if is_record_meal and user_id:
-        nutrition_prompt = f"""
-        Extract meal details from: "{last_message}"
-        Format:
-        MEAL: [description]
-        PROTEIN: [grams]
-        CALORIES: [kcal]
-        """
-        try:
-            resp = await llm.ainvoke([HumanMessage(content=nutrition_prompt)])
-            text = resp.content.strip()
-            import re
-            m_meal = re.search(r'MEAL:\s*(.+)', text)
-            m_prot = re.search(r'PROTEIN:\s*(\d+(?:\.\d+)?)', text)
-            m_cal = re.search(r'CALORIES:\s*(\d+(?:\.\d+)?)', text)
-            
-            if m_meal and m_prot and m_cal:
-                meal_name = m_meal.group(1).strip()
-                result = await record_meal.ainvoke({
-                    "user_id": user_id,
-                    "meal_name": meal_name,
-                    "protein_grams": float(m_prot.group(1)),
-                    "calories": float(m_cal.group(1))
-                })
-                if result.get("success"):
-                    data_response = f"ACTION_TAKEN: Logged {meal_name}. Daily Total: {result.get('protein_total')}g protein."
-                else:
-                    data_response = f"ACTION_FAILED: {result.get('error')}"
-        except Exception as e:
-            data_response = f"ACTION_FAILED: Classification error {e}"
+    # 1. Logging (LLM-classified for consistency)
+    if user_id:
+        skip_prefixes = ["hi", "hello", "thanks", "thank you", "bye"]
+        if len(low) > 6 and not any(low.startswith(p) for p in skip_prefixes):
+            # Only use user-provided macros (avoid hallucinated numbers)
+            m_user_prot = re.search(r'(\d+(?:\.\d+)?)\s*(g|grams)?\s*protein', low)
+            m_user_cal = re.search(r'(\d+(?:\.\d+)?)\s*(kcal|calories|calorie)', low)
+            user_protein = float(m_user_prot.group(1)) if m_user_prot else 0.0
+            user_calories = float(m_user_cal.group(1)) if m_user_cal else 0.0
+
+            nutrition_prompt = f"""
+            Decide if the user is reporting a meal they ate.
+            If yes, extract the meal description and estimate protein/calories
+            using normal serving sizes (do not exaggerate).
+            Respond in this exact format:
+            MEAL_LOG: YES|NO
+            MEAL: [description or empty]
+            PROTEIN: [grams or 0]
+            CALORIES: [kcal or 0]
+
+            User message: "{last_message}"
+            """
+            try:
+                resp = await llm.ainvoke([HumanMessage(content=nutrition_prompt)])
+                text = resp.content.strip()
+                m_log = re.search(r'MEAL_LOG:\s*(YES|NO)', text, re.IGNORECASE)
+                m_meal = re.search(r'MEAL:\s*(.*)', text)
+                m_prot = re.search(r'PROTEIN:\s*(\d+(?:\.\d+)?)', text)
+                m_cal = re.search(r'CALORIES:\s*(\d+(?:\.\d+)?)', text)
+
+                is_meal_log = bool(m_log and m_log.group(1).upper() == "YES")
+                meal_name = m_meal.group(1).strip() if m_meal else ""
+
+                # Fallback: derive meal name directly from user message if LLM format is incomplete
+                if not meal_name and is_meal_log:
+                    cleaned = re.sub(r"^(i just ate|i ate|i had|i have eaten|i've eaten|i've had|i ate a|i had a|record that i have eaten|record that i ate)\s+", "", low, flags=re.IGNORECASE)
+                    meal_name = cleaned.strip()
+
+                estimated_protein = float(m_prot.group(1)) if m_prot else 0.0
+                estimated_calories = float(m_cal.group(1)) if m_cal else 0.0
+
+                # Use user-provided macros when available, otherwise use estimates
+                protein_grams = user_protein if user_protein > 0 else estimated_protein
+                calories = user_calories if user_calories > 0 else estimated_calories
+
+                # Clamp to reasonable single-meal ranges to avoid exaggerated values
+                protein_grams = min(max(protein_grams, 0.0), 60.0)
+                calories = min(max(calories, 0.0), 900.0)
+
+                if is_meal_log and meal_name:
+                    result = await record_meal.ainvoke({
+                        "user_id": user_id,
+                        "meal_name": meal_name,
+                        "protein_grams": protein_grams,
+                        "calories": calories
+                    })
+                    if result.get("success"):
+                        if user_protein > 0:
+                            protein_note = f"{user_protein}g"
+                        elif protein_grams > 0:
+                            protein_note = f"estimated {protein_grams}g"
+                        else:
+                            protein_note = "not provided"
+
+                        if user_calories > 0:
+                            calories_note = f"{user_calories} kcal"
+                        elif calories > 0:
+                            calories_note = f"estimated {calories} kcal"
+                        else:
+                            calories_note = "not provided"
+                        data_response = (
+                            f"ACTION_TAKEN: Logged {meal_name}. "
+                            f"Protein: {protein_note}. Calories: {calories_note}. "
+                            f"Daily Total: {result.get('protein_total')}g protein."
+                        )
+                    else:
+                        data_response = f"ACTION_FAILED: {result.get('error')}"
+            except Exception as e:
+                data_response = f"ACTION_FAILED: Classification error {e}"
 
     # 2. Data Context (Always provide if available)
     parts = []
@@ -220,28 +268,22 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
     profile = state.get("profile") or {}
-    prev_memory = state.get("memory") or ""
     convo_excerpt = state.get("conversation_log") or "[]"
     
     clinical_context = state.get("clinical_context") or ""
     data_response = state.get("data_response") or ""
     
-    # Contexts
-    phase_info = _calculate_post_op_phase(profile.get("surgery_date"))
-    status_context = f"Patient Status: {phase_info}" if phase_info else ""
-    
-    # Prompt Construction
-    prefix = ""
-    if status_context:
-        prefix += status_context + "\n"
+    # Prompt Construction - Keep concise for speed
+    parts = []
     if clinical_context:
-        prefix += f"\n[CLINICAL GUIDELINES]\n{clinical_context}\n"
+        # Truncate clinical context for speed
+        truncated = clinical_context[:MAX_GUIDELINE_CHARS]
+        parts.append(f"[GUIDELINES]\n{truncated}")
     if data_response:
-        prefix += f"\n[NURSE REPORT]\n{data_response}\n"
+        parts.append(f"[DATA]\n{data_response}")
         
-    prefix += "\n[INSTRUCTION]\nSynthesize a helpful response. Use Guidelines for safety. Use Nurse Report for actions/data.\n"
-    
-    full_text = prefix + "\nUser Question: " + last_message if prefix else last_message
+    prefix = "\n".join(parts) + "\n" if parts else ""
+    full_text = prefix + last_message
     
     # Greeting Check
     greetings = ("hi", "hello", "hey", "good morning")
@@ -249,10 +291,18 @@ async def assistant_agent(state: MultiAgentState) -> dict:
         final_response = "Hello! I'm your bariatric assistant. How can I help you today?"
     else:
         try:
-            resp = await llm.ainvoke([SystemMessage(content=SYSTEM_PERSONA), HumanMessage(content=full_text)])
+            resp = await llm.ainvoke(
+                [SystemMessage(content=SYSTEM_PERSONA), HumanMessage(content=full_text)]
+            )
             final_response = resp.content
         except Exception:
             final_response = "I'm having trouble thinking right now. Please try again."
+
+    # Confirmation message when a meal was logged
+    if data_response.startswith("ACTION_TAKEN:"):
+        confirmation = data_response.replace("ACTION_TAKEN:", "Recorded.").strip()
+        if confirmation.lower() not in final_response.lower():
+            final_response = f"{confirmation}\n\n{final_response}" if final_response else confirmation
 
     # Logging Helper (Compact)
     try:
@@ -295,4 +345,4 @@ workflow.add_edge("nurse", "assistant")
 workflow.add_edge("assistant", END)
 
 app = workflow.compile()
-print("✅ Sequential Agent System Compiled!")
+print("Sequential Agent System Compiled!")

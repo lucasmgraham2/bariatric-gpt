@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/profile_service.dart';
+import 'package:intl/intl.dart';
 
 class MealsScreen extends StatefulWidget {
   const MealsScreen({super.key});
@@ -42,18 +43,65 @@ class _MealsScreenState extends State<MealsScreen> {
     final result = await _profileService.fetchProfile();
     if (result['success'] == true) {
       final profile = Map<String, dynamic>.from(result['profile'] ?? {});
-      final meals = profile['todays_meals'] as List?;
       
-      if (meals != null) {
-        _todaysMeals.clear();
-        _todaysMeals.addAll(meals.map((m) => Map<String, dynamic>.from(m)));
-        _calculateTotals();
+      // Check if it's a new day
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final lastMealDate = profile['last_meal_date'] as String?;
+      
+      if (lastMealDate != null && lastMealDate != today) {
+        // New day detected - save yesterday's protein to history and clear meals
+        await _handleNewDay(profile, lastMealDate);
+        // Reload profile after handling new day
+        final newResult = await _profileService.fetchProfile();
+        if (newResult['success'] == true) {
+          final newProfile = Map<String, dynamic>.from(newResult['profile'] ?? {});
+          final meals = newProfile['todays_meals'] as List?;
+          if (meals != null) {
+            _todaysMeals.clear();
+            _todaysMeals.addAll(meals.map((m) => Map<String, dynamic>.from(m)));
+            _calculateTotals();
+          }
+        }
+      } else {
+        // Same day - just load meals
+        final meals = profile['todays_meals'] as List?;
+        if (meals != null) {
+          _todaysMeals.clear();
+          _todaysMeals.addAll(meals.map((m) => Map<String, dynamic>.from(m)));
+          _calculateTotals();
+        }
+        
+        // Set today's date if not set
+        if (lastMealDate == null) {
+          profile['last_meal_date'] = today;
+          await _profileService.updateProfile(profile);
+        }
       }
     }
 
     setState(() {
       _loading = false;
     });
+  }
+  
+  Future<void> _handleNewDay(Map<String, dynamic> profile, String previousDate) async {
+    // Get yesterday's total protein
+    final yesterdayProtein = (profile['protein_today'] ?? 0).toDouble();
+    
+    // Save to protein history
+    Map<String, dynamic> proteinHistory = {};
+    if (profile['protein_history'] != null) {
+      proteinHistory = Map<String, dynamic>.from(profile['protein_history']);
+    }
+    proteinHistory[previousDate] = yesterdayProtein;
+    
+    // Update profile with cleared data for new day
+    profile['protein_history'] = proteinHistory;
+    profile['todays_meals'] = [];
+    profile['protein_today'] = 0;
+    profile['last_meal_date'] = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    
+    await _profileService.updateProfile(profile);
   }
 
   void _calculateTotals() {
@@ -110,6 +158,10 @@ class _MealsScreenState extends State<MealsScreen> {
       // Also update total protein for the day
       profile['protein_today'] = _totalProtein;
       
+      // Update last meal date to today
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      profile['last_meal_date'] = today;
+      
       await _profileService.updateProfile(profile);
     }
   }
@@ -130,11 +182,13 @@ class _MealsScreenState extends State<MealsScreen> {
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _loadTodaysMeals,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Summary Cards
               Row(
                 children: [
@@ -233,18 +287,21 @@ class _MealsScreenState extends State<MealsScreen> {
               
               const SizedBox(height: 16),
               
-              // Today's Meals List
               const Text(
                 'Today\'s Meals',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               
-              Expanded(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _todaysMeals.isEmpty
-                        ? Center(
+              _loading
+                  ? const SizedBox(
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _todaysMeals.isEmpty
+                      ? SizedBox(
+                          height: 200,
+                          child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -261,16 +318,19 @@ class _MealsScreenState extends State<MealsScreen> {
                                 ),
                               ],
                             ),
-                          )
-                        : ListView.builder(
-                            itemCount: _todaysMeals.length,
-                            itemBuilder: (context, index) {
-                              final meal = _todaysMeals[index];
-                              return _mealCard(meal, index);
-                            },
                           ),
-              ),
-            ],
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _todaysMeals.length,
+                          itemBuilder: (context, index) {
+                            final meal = _todaysMeals[index];
+                            return _mealCard(meal, index);
+                          },
+                        ),
+              ],
+            ),
           ),
         ),
       ),

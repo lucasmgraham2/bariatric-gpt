@@ -35,7 +35,7 @@ def rebuild_database():
             loader = TextLoader(f)
             docs.extend(loader.load())
         except Exception as e:
-            print(f"   ❌ Error loading {f}: {e}")
+            print(f"   ERROR: Error loading {f}: {e}")
 
     # PDF files
     pdf_files = glob.glob(os.path.join(KNOWLEDGE_DIR, "*.pdf"))
@@ -45,15 +45,15 @@ def rebuild_database():
             loader = PyPDFLoader(f)
             docs.extend(loader.load())
         except Exception as e:
-            print(f"   ❌ Error loading {f}: {e}")
+            print(f"   ERROR: Error loading {f}: {e}")
 
     if not docs:
-        print("\n⚠️  No documents found! Database will be empty.")
+        print("\nWARNING: No documents found! Database will be empty.")
         return
 
     # 3. Splitter: Chunking
     # Using slightly larger chunks for medical context, with overlap to capture cross-boundary info
-    print(f"\n✂️  Splitting {len(docs)} documents...")
+    print(f"\nSplitting {len(docs)} documents...")
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
         chunk_overlap=150,
@@ -64,7 +64,7 @@ def rebuild_database():
     print(f"   -> Generated {len(splits)} chunks of knowledge.")
 
     # 4. Ingest: ChromaDB
-    print("\n💾 Ingesting into Vector Database...")
+    print("\nIngesting into Vector Database...")
     client = chromadb.PersistentClient(path=DB_DIR)
     collection = client.get_or_create_collection(name="bariatric_knowledge")
 
@@ -85,7 +85,7 @@ def rebuild_database():
             metadatas=metadatas[i:end]
         )
 
-    print("\n✅ Knowledge Base Build Complete.")
+    print("\nKnowledge Base Build Complete.")
     print(f"   Total Chunks: {collection.count()}")
     print("="*50)
 

@@ -1,33 +1,62 @@
-# Team Database Setup Guide
+# Team Setup Guide
 
-## For New Team Members
+## New Team Member Onboarding
 
-### Windows Users:
-1. **Clone the repository**
-2. **Run the automated setup**:
-   ```bash
-   setup_windows_postgres.bat
-   ```
-3. **Start the services**:
-   ```bash
-   python storage_service/main_simple.py    # Terminal 1
-   python api_gateway/main_simple.py        # Terminal 2  
-   cd flutter_frontend && flutter run       # Terminal 3
-   ```
+### 1. Prerequisites
 
-### macOS Users:
-1. **Clone the repository**
-2. **Run the automated setup**:
-   ```bash
-   chmod +x setup_macos_postgres.sh
-   ./setup_macos_postgres.sh
-   ```
-3. **Start the services** (same as Windows):
-   ```bash
-   python storage_service/main_simple.py    # Terminal 1
-   python api_gateway/main_simple.py        # Terminal 2  
-   cd flutter_frontend && flutter run       # Terminal 3
-   ```
+**Download and install:**
+- Python 3.9+: https://www.python.org/downloads/
+- Flutter SDK: https://docs.flutter.dev/get-started/install
+- Ollama: https://ollama.com/download
+- Git: https://git-scm.com/downloads
+
+### 2. Clone Repository
+```bash
+git clone <repository-url>
+cd bariatric-gpt
+```
+
+### 3. Install Ollama Model
+```powershell
+ollama pull deepseek-r1:8b
+```
+
+### 4. Database Setup
+
+**Windows:**
+```powershell
+.\setup_windows_postgres.bat
+```
+
+**macOS/Linux:**
+```bash
+chmod +x setup_macos_postgres.sh
+./setup_macos_postgres.sh
+```
+
+### 5. Install Dependencies
+```powershell
+# Python packages
+pip install -r api_gateway/requirements.txt
+pip install -r storage_service/requirements.txt
+pip install -r llm_service/requirements.txt
+
+# Flutter packages
+cd flutter_frontend
+flutter pub get
+```
+
+### 6. Start Development
+```powershell
+# Easy mode (Windows)
+.\run_all_services.bat
+
+# Manual mode (Any OS)
+python storage_service/main_simple.py    # Terminal 1
+python api_gateway/main_simple.py        # Terminal 2
+cd llm_service && python main_simple.py  # Terminal 3
+cd flutter_frontend && flutter run       # Terminal 4
+```
 
 ### Manual Setup (Any OS):
 1. **Install PostgreSQL** from https://www.postgresql.org/download/
