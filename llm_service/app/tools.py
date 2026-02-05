@@ -52,14 +52,19 @@ async def record_meal(user_id: str, meal_name: str, protein_grams: float, calori
     
     async with httpx.AsyncClient() as client:
         try:
+            # Convert user_id to int for storage service compatibility
+            user_id_int = int(user_id)
+            
             # First, get the current profile
-            response = await client.get(f"{STORAGE_SERVICE_URL}/me/{user_id}")
+            response = await client.get(f"{STORAGE_SERVICE_URL}/me/{user_id_int}")
             
             if response.status_code != 200:
-                return {"error": "Failed to fetch user profile"}
+                print(f"    ERROR: Failed to fetch user profile. Status: {response.status_code}")
+                return {"error": f"Failed to fetch user profile (status {response.status_code})"}
             
             user_data = response.json()
             profile = user_data.get("profile", {})
+            print(f"    Current profile retrieved successfully")
             
             # Get current meals list or create new one (use 'todays_meals' to match the Meals screen)
             meals = profile.get("todays_meals", [])
@@ -88,11 +93,12 @@ async def record_meal(user_id: str, meal_name: str, protein_grams: float, calori
             
             # Save updated profile to the correct endpoint
             update_response = await client.put(
-                f"{STORAGE_SERVICE_URL}/me/{user_id}/profile",
+                f"{STORAGE_SERVICE_URL}/me/{user_id_int}/profile",
                 json={"profile": profile}
             )
             
             if update_response.status_code == 200:
+                print(f"    SUCCESS: Meal recorded. New protein total: {new_protein_total}g")
                 return {
                     "success": True,
                     "message": f"Recorded '{meal_name}' with {protein_grams}g protein and {calories} calories. Your daily protein total is now {new_protein_total}g.",
@@ -100,9 +106,16 @@ async def record_meal(user_id: str, meal_name: str, protein_grams: float, calori
                     "meal_count": len(meals)
                 }
             else:
-                return {"error": "Failed to update profile"}
+                print(f"    ERROR: Failed to update profile. Status: {update_response.status_code}")
+                print(f"    Response: {update_response.text}")
+                return {"error": f"Failed to update profile (status {update_response.status_code})"}
                 
         except httpx.HTTPError as e:
+            print(f"    ERROR: Storage service connection error: {str(e)}")
             return {"error": f"Storage service connection error: {str(e)}"}
+        except ValueError as e:
+            print(f"    ERROR: Invalid user_id format: {str(e)}")
+            return {"error": f"Invalid user_id format: {str(e)}"}
         except Exception as e:
+            print(f"    ERROR: Unexpected error: {str(e)}")
             return {"error": f"Unexpected error: {str(e)}"}
