@@ -41,26 +41,28 @@ class MultiAgentState(TypedDict):
 # 2. SETUP LLM
 # ==========================================
 
-# Using local Ollama model (llama3) with tighter limits for faster responses
+# Using local Ollama model (llama3) with sufficient context for conversation history
 llm = ChatOllama(
     model="llama3",
     temperature=0,
-    num_ctx=2048,
-    num_predict=200
+    num_ctx=8192,
+    num_predict=512
 )
 
 # Performance tuning
 RAG_RESULTS = 1
-MAX_GUIDELINE_CHARS = 250
+MAX_GUIDELINE_CHARS = 400
 
 SYSTEM_PERSONA = (
     "You are a warm, empathetic bariatric care assistant. You speak naturally, like a knowledgeable friend. "
     "Be concise but caring. Do not repeat generic offers of help constantly. "
     "If the user says 'thanks', just say 'You're welcome' without extra fluff.\n\n"
     "CRITICAL RULES:\n"
-    "1. DO NOT ask the user what they ate today unless they explicitly ask you to log a meal.\n"
-    "2. FOCUS on future guidance. Use their past history to inform advice, but don't interrogate them about the present.\n"
-    "3. If you don't understand, ask clarifying questions about their GOAL, not their intake."
+    "1. When the user references 'it', 'that', 'your suggestion', or asks follow-up questions, refer to what you said earlier in this conversation.\n"
+    "2. DO NOT ask the user what they ate today unless they explicitly ask you to log a meal.\n"
+    "3. FOCUS on future guidance. Use their past history to inform advice, but don't interrogate them.\n"
+    "4. When suggesting meals, avoid recommending any meal already listed in TODAYS_MEALS.\n"
+    "5. Prioritize answering the user's current question directly."
 )
 
 # ==========================================
@@ -212,6 +214,15 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
                 protein_grams = user_protein if user_protein > 0 else estimated_protein
                 calories = user_calories if user_calories > 0 else estimated_calories
 
+                # Fill in missing macros with conservative estimates so we never log zeros
+                if protein_grams <= 0 and calories > 0:
+                    protein_grams = max(5.0, min(calories / 20.0, 40.0))
+                if calories <= 0 and protein_grams > 0:
+                    calories = max(120.0, min(protein_grams * 12.0, 600.0))
+                if protein_grams <= 0 and calories <= 0:
+                    protein_grams = 15.0
+                    calories = 250.0
+
                 # Clamp to reasonable single-meal ranges to avoid exaggerated values
                 protein_grams = min(max(protein_grams, 0.0), 60.0)
                 calories = min(max(calories, 0.0), 900.0)
@@ -267,23 +278,56 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     """Synthesizes final response using Research + Nurse Data."""
     messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
+    low_message = last_message.lower().strip()
     profile = state.get("profile") or {}
     convo_excerpt = state.get("conversation_log") or "[]"
     
     clinical_context = state.get("clinical_context") or ""
     data_response = state.get("data_response") or ""
     
-    # Prompt Construction - Keep concise for speed
+    # Prompt Construction - Add contextual data to help the LLM respond
     parts = []
+    
+    # Clinical guidelines
     if clinical_context:
-        # Truncate clinical context for speed
         truncated = clinical_context[:MAX_GUIDELINE_CHARS]
         parts.append(f"[GUIDELINES]\n{truncated}")
+    include_todays_meals = any(
+        phrase in low_message
+        for phrase in [
+            "recommend",
+            "suggest",
+            "meal ideas",
+            "what should i eat",
+            "dinner ideas",
+            "lunch ideas",
+            "breakfast ideas",
+            "snack ideas",
+            "log",
+            "record",
+            "add meal",
+            "today's meals",
+            "todays meals",
+        ]
+    )
+
+    todays_meals = profile.get("todays_meals") or []
+    if include_todays_meals and todays_meals:
+        meal_names = []
+        for meal in todays_meals:
+            if isinstance(meal, dict) and meal.get("food"):
+                meal_names.append(str(meal.get("food")))
+            elif isinstance(meal, str):
+                meal_names.append(meal)
+        if meal_names:
+            parts.append("[TODAYS_MEALS]\n" + "\n".join(meal_names[:20]))
     if data_response:
-        parts.append(f"[DATA]\n{data_response}")
-        
-    prefix = "\n".join(parts) + "\n" if parts else ""
-    full_text = prefix + last_message
+        parts.append(f"[DATA]\n{data_response}\n[DATA_RULE]\nUse DATA only if directly relevant to the current question.")
+    
+    # Build system message with persona and context
+    system_content = SYSTEM_PERSONA
+    if parts:
+        system_content += "\n\n" + "\n\n".join(parts)
     
     # Greeting Check
     greetings = ("hi", "hello", "hey", "good morning")
@@ -291,9 +335,9 @@ async def assistant_agent(state: MultiAgentState) -> dict:
         final_response = "Hello! I'm your bariatric assistant. How can I help you today?"
     else:
         try:
-            resp = await llm.ainvoke(
-                [SystemMessage(content=SYSTEM_PERSONA), HumanMessage(content=full_text)]
-            )
+            # Pass full conversation history to the LLM
+            llm_messages = [SystemMessage(content=system_content)] + messages
+            resp = await llm.ainvoke(llm_messages)
             final_response = resp.content
         except Exception:
             final_response = "I'm having trouble thinking right now. Please try again."
@@ -304,19 +348,21 @@ async def assistant_agent(state: MultiAgentState) -> dict:
         if confirmation.lower() not in final_response.lower():
             final_response = f"{confirmation}\n\n{final_response}" if final_response else confirmation
 
-    # Logging Helper (Compact)
+    # Build conversation log for next turn
     try:
-        parsed = json.loads(convo_excerpt) if isinstance(convo_excerpt, str) else {}
-        recent_user = parsed.get("recent_user_prompts", [])
-        recent_assistant = parsed.get("recent_assistant_responses", [])
-        recent_user.append(last_message)
-        recent_assistant.append(final_response)
-        new_log = json.dumps({
-            "recent_user_prompts": recent_user[-5:],
-            "recent_assistant_responses": recent_assistant[-5:]
-        })
-    except Exception:
-        new_log = "[]"
+        parsed = json.loads(convo_excerpt) if convo_excerpt and convo_excerpt != "[]" else {}
+        recent_user = list(parsed.get("recent_user_prompts", []))
+        recent_assistant = list(parsed.get("recent_assistant_responses", []))
+    except:
+        recent_user, recent_assistant = [], []
+    
+    recent_user.append(last_message)
+    recent_assistant.append(final_response)
+    
+    new_log = json.dumps({
+        "recent_user_prompts": recent_user[-5:],
+        "recent_assistant_responses": recent_assistant[-5:]
+    })
 
     # Markdown Helper
     final_response_readme = f"# Assistant Response\n\n{final_response}\n\n_Generated by Bariatric-GPT_"

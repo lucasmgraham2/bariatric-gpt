@@ -11,7 +11,7 @@ class AiAssistantScreen extends StatefulWidget {
 }
 
 class _AiAssistantScreenState extends State<AiAssistantScreen>
-    with SingleTickerProviderStateMixin {
+  with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final AiService _aiService = AiService();
@@ -41,6 +41,9 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
     super.dispose();
   }
 
+  @override
+  bool get wantKeepAlive => true;
+
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
@@ -59,24 +62,26 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
     // Call AI service
     final result = await _aiService.sendMessage(message: text);
 
-    setState(() {
-      _isTyping = false;
-      if (result['success']) {
-        final md = result['response_markdown'];
-        final plain = result['response'] ?? '';
-        
-        final responseArgs = (md != null && md is String && md.isNotEmpty)
-            ? ChatMessage(text: md, isUser: false, isMarkdown: true)
-            : ChatMessage(text: plain, isUser: false, isMarkdown: false);
-            
-        _aiService.addMessage(responseArgs);
-      } else {
-        _aiService.addMessage(ChatMessage(
-          text: 'Error: ${result['error']}',
-          isUser: false,
-        ));
-      }
-    });
+    ChatMessage responseMessage;
+    if (result['success']) {
+      final md = result['response_markdown'];
+      final plain = result['response'] ?? '';
+      responseMessage = (md != null && md is String && md.isNotEmpty)
+          ? ChatMessage(text: md, isUser: false, isMarkdown: true)
+          : ChatMessage(text: plain, isUser: false, isMarkdown: false);
+    } else {
+      responseMessage = ChatMessage(
+        text: 'Error: ${result['error']}',
+        isUser: false,
+      );
+    }
+
+    _aiService.addMessage(responseMessage);
+    if (mounted) {
+      setState(() {
+        _isTyping = false;
+      });
+    }
     _scrollToBottom();
   }
 
@@ -95,6 +100,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     // Access the persistent messages directly
     final messages = _aiService.messages;
 

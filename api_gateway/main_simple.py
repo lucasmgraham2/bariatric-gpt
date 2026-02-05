@@ -12,6 +12,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 STORAGE_URL = "http://localhost:8002"
 LLM_SERVICE_URL = "http://localhost:8001"
 tokens = {}
+session_conversation_logs = {}
 # Optional key the gateway will send when persisting memory to storage service.
 STORAGE_SERVICE_KEY = os.getenv("STORAGE_SERVICE_KEY")
 
@@ -94,6 +95,8 @@ async def logout(authorization: Optional[str] = Header(None)):
         token = authorization.split(" ")[1]
         if token in tokens:
             del tokens[token]
+        if token in session_conversation_logs:
+            del session_conversation_logs[token]
     except IndexError:
         pass
     
@@ -195,21 +198,12 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
                 llm_payload["memory"] = mem_data.get("memory", "")
             else:
                 llm_payload["memory"] = ""
-            # Fetch recent conversation log (use service key if configured)
-            if headers:
-                log_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/conversation_log", headers=headers)
-            else:
-                log_resp = await client.get(f"{STORAGE_URL}/me/{user_id}/conversation_log")
-
-            if log_resp.status_code == 200:
-                log_data = log_resp.json()
-                llm_payload["conversation_log"] = log_data.get("log", "[]")
-            else:
-                llm_payload["conversation_log"] = "[]"
     except Exception:
         # If storage is unavailable or any error occurs, continue without profile/memory
         llm_payload["profile"] = {}
         llm_payload["memory"] = ""
+    # Use in-memory session conversation log so context persists only while the server is running.
+    llm_payload["conversation_log"] = session_conversation_logs.get(token, "[]")
     
     async with httpx.AsyncClient() as client:
         try:
@@ -237,63 +231,44 @@ async def chat_with_agent(chat_data: ChatRequest, authorization: Optional[str] =
                             await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory}, headers=headers)
                         else:
                             await client2.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
-
-                # If the LLM returned an authoritative conversation_log, persist it directly
-                # (this allows the graph to control the canonical recent-5 transcript). Otherwise,
-                # fall back to the previous behavior of fetching and appending to the stored log.
-                try:
-                    async with httpx.AsyncClient() as client2:
-                        headers = {"X-SERVICE-KEY": STORAGE_SERVICE_KEY} if STORAGE_SERVICE_KEY else None
-                        llm_log = llm_result.get("conversation_log")
-                        import json as _json
-                        if llm_log:
-                            # If the graph returned a dict, serialize it; if string, assume already serialized
-                            if isinstance(llm_log, dict):
-                                payload_log = _json.dumps(llm_log)
-                            else:
-                                payload_log = llm_log
-                            if headers:
-                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": payload_log}, headers=headers)
-                            else:
-                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": payload_log})
-                        else:
-                            # Fallback: append current exchange to stored log (legacy behavior)
-                            final_resp = llm_result.get("response") or llm_result.get("final_response") or ""
-                            if headers:
-                                existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log", headers=headers)
-                            else:
-                                existing = await client2.get(f"{STORAGE_URL}/me/{user_id}/conversation_log")
-                            if existing.status_code == 200:
-                                log_json = existing.json().get("log", "[]")
-                            else:
-                                log_json = "[]"
-                            try:
-                                parsed = _json.loads(log_json)
-                                if isinstance(parsed, dict):
-                                    recent_user = parsed.get("recent_user_prompts", []) or []
-                                    recent_assistant = parsed.get("recent_assistant_responses", []) or []
-                                elif isinstance(parsed, list):
-                                    recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"][-5:]
-                                    recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"][-5:]
-                                else:
-                                    recent_user = []
-                                    recent_assistant = []
-                            except Exception:
-                                recent_user = []
-                                recent_assistant = []
-                            recent_user.append(chat_data.message)
-                            recent_user = recent_user[-5:]
-                            recent_assistant.append(final_resp)
-                            recent_assistant = recent_assistant[-5:]
-                            new_log_obj = {"recent_user_prompts": recent_user, "recent_assistant_responses": recent_assistant}
-                            if headers:
-                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)}, headers=headers)
-                            else:
-                                await client2.put(f"{STORAGE_URL}/me/{user_id}/conversation_log", json={"log": _json.dumps(new_log_obj)})
-                except Exception:
-                    pass
             except Exception:
                 # Don't fail the chat if memory persistence fails - just log in server
+                pass
+
+            # Update in-memory session conversation log for this token
+            try:
+                import json as _json
+                llm_log = llm_result.get("conversation_log")
+                if llm_log:
+                    if isinstance(llm_log, dict):
+                        session_conversation_logs[token] = _json.dumps(llm_log)
+                    else:
+                        session_conversation_logs[token] = llm_log
+                else:
+                    existing_log = session_conversation_logs.get(token, "[]")
+                    try:
+                        parsed = _json.loads(existing_log)
+                    except Exception:
+                        parsed = {}
+                    if isinstance(parsed, dict):
+                        recent_user = parsed.get("recent_user_prompts", []) or []
+                        recent_assistant = parsed.get("recent_assistant_responses", []) or []
+                    elif isinstance(parsed, list):
+                        recent_user = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "user"][-5:]
+                        recent_assistant = [e.get("text") for e in parsed if isinstance(e, dict) and e.get("role") == "assistant"][-5:]
+                    else:
+                        recent_user = []
+                        recent_assistant = []
+                    recent_user.append(chat_data.message)
+                    recent_user = recent_user[-5:]
+                    final_resp = llm_result.get("response") or llm_result.get("final_response") or ""
+                    recent_assistant.append(final_resp)
+                    recent_assistant = recent_assistant[-5:]
+                    session_conversation_logs[token] = _json.dumps({
+                        "recent_user_prompts": recent_user,
+                        "recent_assistant_responses": recent_assistant
+                    })
+            except Exception:
                 pass
 
             # Return the LLM's final response to the Flutter app
