@@ -14,7 +14,7 @@ from typing import TypedDict, List, Optional
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
-from .tools import get_patient_data, record_meal
+from .tools import get_patient_data, record_meal, search_nutrition
 from .rag import query_knowledge
 import json
 import httpx
@@ -35,6 +35,7 @@ class MultiAgentState(TypedDict):
     conversation_log: Optional[str]
     clinical_context: Optional[str]  # Facts from Researcher
     data_response: Optional[str]     # Report from Nurse
+    nutrition_context: Optional[str] # Facts from Dietitian
     memory: Optional[str]            # Previous memory summary
 
 # ==========================================
@@ -50,7 +51,7 @@ llm = ChatOllama(
 )
 
 # Performance tuning
-RAG_RESULTS = 1
+RAG_RESULTS = 3
 MAX_GUIDELINE_CHARS = 400
 
 SYSTEM_PERSONA = (
@@ -58,11 +59,23 @@ SYSTEM_PERSONA = (
     "Be concise but caring. Do not repeat generic offers of help constantly. "
     "If the user says 'thanks', just say 'You're welcome' without extra fluff.\n\n"
     "CRITICAL RULES:\n"
+    "0. THINKING PROCESS: You MUST start your response with a hidden <thought> block. Inside this block, explicitly state the patient's Current Phase, Diet Type, Activity Level, and Texture Restrictions. Evaluate the safety of their request based on these factors before generating your actual response outside the block.\n"
     "1. When the user references 'it', 'that', 'your suggestion', or asks follow-up questions, refer to what you said earlier in this conversation.\n"
     "2. DO NOT ask the user what they ate today unless they explicitly ask you to log a meal.\n"
     "3. FOCUS on future guidance. Use their past history to inform advice, but don't interrogate them.\n"
     "4. When suggesting meals, avoid recommending any meal already listed in TODAYS_MEALS.\n"
-    "5. Prioritize answering the user's current question directly."
+    "5. Prioritize answering the user's current question directly.\n"
+    "6. TEMPORAL AWARENESS: Use the 'Current Phase' data. If PRE-OP, STRICTLY ENFORCE the liver shrinking diet (low carb, low fat, high protein) and advise against heavy/cheat meals to reduce surgical risk. If Phase 1 (Clear Liquids) or Phase 2 (Full Liquids), explicitly forbid pureed or solid foods.\n"
+    "7. ALLERGIES & DISLIKES: NEVER suggest foods the user is allergic to or dislikes. If they ask for an allergen, explicitly remind them of their allergy and firmly decline.\n"
+    "8. FIRM BOUNDARIES: If the user requests a food violating their Current Phase, Diet, or Allergies, you MUST firmly decline, explain the physical danger using explicit anatomical terms (e.g., 'internal tearing', 'pouch stretching', 'dumping syndrome'), and provide a safe alternative tailored to their exact profile.\n"
+    "9. NUTRITION FACTS: If given exact nutrition data from OpenFoodFacts, explicitly format your response to include: 'Here are the exact macros from OpenFoodFacts:' to show the user you verified the data.\n"
+    "10. ACTIVITY LEVEL: You MUST explicitly mention the user's Activity Level (Sedentary, Lightly Active, Active) in your response and adjust portion sizes, calorie targets, and hydration recommendations accordingly. NEVER ignore their activity level.\n"
+    "11. VEGAN/VEGETARIAN CONSTRAINTS: Ensure NO meat/poultry products (like chicken or beef broth) are suggested to Vegetarians or Vegans. Standard diets have no meat restrictions.\n"
+    "12. TEXTURE SAFETY (NUTS/SEEDS): Nuts and seeds MUST be ground or pureed in Phase 3. Whole nuts/seeds are entirely forbidden until Phase 4 or Maintenance.\n"
+    "13. EMOTIONAL SUPPORT & PLATEAUS: If the user is frustrated by a weight loss stall or plateau, explicitly validate their feelings, explain that plateaus are a normal part of the bariatric journey, and ask them what they usually consider 'comfort food' before offering alternatives.\n"
+    "14. HIGH-PROTEIN FOCUS: When offering alternatives to unhealthy cravings or comfort foods, ALWAYS prioritize high-protein bariatric-friendly options (e.g., clear protein drinks in Phase 1, pureed high-protein dishes in Phase 3).\n"
+    "15. CALORIE TARGETS: In early Phase 3 (Pureed/Soft), daily calorie goals are typically around 600-800. In Phase 4/5, it increases to 800-1200 depending on activity level. Do not push patients to 1000+ calories too early.\n"
+    "16. OUT-OF-SCOPE QUERIES: You are strictly a Bariatric Care Assistant. If the user asks general life questions, coding questions, complex medical diagnostics unrelated to bariatric diet protocols, or political questions, politely decline and remind them of your purpose."
 )
 
 # ==========================================
@@ -91,7 +104,7 @@ def _calculate_post_op_phase(surgery_date_str: str) -> str:
     elif 4 <= weeks < 8:
         return f"PHASE 4: Adaptive/Regular Soft Diet (Week {weeks+1})"
     else:
-        return f"MAINTENANCE PHASE (Week {weeks+1})"
+        return f"PHASE 5: Solid Foods / Maintenance (Week {weeks+1})"
 
 async def generate_and_persist_memory(user_id: str, prev_memory: str, last_message: str, assistant_response: str):
     """Background task to generate updated memory."""
@@ -113,9 +126,19 @@ async def generate_and_persist_memory(user_id: str, prev_memory: str, last_messa
         elif "```" in new_memory:
             new_memory = new_memory.split("```")[1].split("```")[0].strip()
 
+        # Extract digits from user_id for Storage API
+        m = re.search(r'\d+', str(user_id))
+        if m:
+            user_id_int = int(m.group())
+        else:
+            try:
+                user_id_int = int(user_id)
+            except ValueError:
+                user_id_int = 1  # Fallback for sweep test cases
+                
         # Save to Storage Service
         async with httpx.AsyncClient() as client:
-            await client.put(f"{STORAGE_URL}/me/{user_id}/memory", json={"memory": new_memory})
+            await client.put(f"{STORAGE_URL}/me/{user_id_int}/memory", json={"memory": new_memory})
         
     except Exception as e:
         print(f"ERROR: Memory update failed: {e}")
@@ -180,8 +203,9 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
             user_calories = float(m_user_cal.group(1)) if m_user_cal else 0.0
 
             nutrition_prompt = f"""
-            Decide if the user is reporting a meal they ate.
-            If yes, extract the meal description and estimate protein/calories
+            Decide if the user is reporting a meal they ALREADY ate today.
+            If they are asking a hypothetical question (e.g., "Can I have...", "What if..."), answer NO.
+            If they ALREADY ate it, extract the meal description and estimate protein/calories
             using normal serving sizes (do not exaggerate).
             Respond in this exact format:
             MEAL_LOG: YES|NO
@@ -261,10 +285,17 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
     # 2. Data Context (Always provide if available)
     parts = []
     if profile:
-        parts.append(f"Surgery Date: {profile.get('surgery_date', 'N/A')}")
+        surg_date = profile.get('surgery_date', 'N/A')
+        parts.append(f"Surgery Date: {surg_date}")
+        if surg_date != 'N/A':
+            phase = _calculate_post_op_phase(surg_date)
+            parts.append(f"Current Phase: {phase}")
         parts.append(f"Diet: {profile.get('diet_type', 'N/A')}")
+        parts.append(f"Activity Level: {profile.get('activity_level', 'N/A')}")
         if profile.get('allergies'):
             parts.append(f"Allergies: {', '.join(profile.get('allergies'))}")
+        if profile.get('disliked_foods'):
+            parts.append(f"Disliked Foods: {', '.join(profile.get('disliked_foods'))}")
     
     if is_profile_request:
         data_response = (data_response + "\n" if data_response else "") + "PATIENT_FILE_REQUESTED:\n" + "\n".join(parts)
@@ -273,9 +304,59 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
         
     return {"data_response": data_response}
 
-# 4.4 SYNTHESIS (DOCTOR)
+# 4.4 DIETITIAN (NUTRITION LOOKUP)
+async def dietitian_agent(state: MultiAgentState) -> dict:
+    """Queries OpenFoodFacts API for specific foods mentioned."""
+    messages = state.get("messages", [])
+    if not messages:
+        return {"nutrition_context": ""}
+        
+    last_message = messages[-1].content
+    low = last_message.lower().strip()
+    
+    # Simple trigger keywords indicating the user is asking about nutrition facts
+    nutrition_keywords = ["protein in", "calories in", "macros", "how many calories", "how much protein", "nutrition facts", "how much fat", "carbs in", "serving size"]
+    is_asking_nutrition = any(k in low for k in nutrition_keywords)
+    
+    # If not asking for nutrition facts, but asking for meal ideas, we don't need to look up a specific food yet.
+    if not is_asking_nutrition:
+        return {"nutrition_context": ""}
+        
+    print(f"--- DIETITIAN: Checking nutrition for '{last_message}' ---")
+    
+    prompt = f"""
+    Extract the main single food item the user is asking about in this message.
+    Return ONLY the raw food name (e.g. "eggs", "chicken breast", "broccoli", "edamame") with NO punctuation, NO quantities, and NO extra text.
+    If multiple foods, pick the primary one.
+    User message: "{last_message}"
+    """
+    try:
+        resp = await llm.ainvoke([HumanMessage(content=prompt)])
+        food_query = resp.content.strip().replace('"', '')
+        
+        if food_query:
+            nutrition_data = await search_nutrition.ainvoke({"food_query": food_query})
+            if "error" not in nutrition_data:
+                context = (
+                    f"Food: {nutrition_data['food_name']}\n"
+                    f"Serving Size: {nutrition_data['serving_size']}\n"
+                    f"Calories: {nutrition_data['calories']} kcal\n"
+                    f"Protein: {nutrition_data['protein_g']}g\n"
+                    f"Carbs: {nutrition_data['carbs_g']}g\n"
+                    f"Fat: {nutrition_data['fat_g']}g"
+                )
+                print(f"--- DIETITIAN: Found data for {food_query} ---")
+                return {"nutrition_context": context}
+            else:
+                print(f"--- DIETITIAN: No data found ({nutrition_data['error']}) ---")
+    except Exception as e:
+        print(f"--- DIETITIAN Error: {e} ---")
+        
+    return {"nutrition_context": ""}
+
+# 4.5 SYNTHESIS (DOCTOR)
 async def assistant_agent(state: MultiAgentState) -> dict:
-    """Synthesizes final response using Research + Nurse Data."""
+    """Synthesizes final response using Research + Nurse + Dietitian Data."""
     messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
     low_message = last_message.lower().strip()
@@ -284,6 +365,7 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     
     clinical_context = state.get("clinical_context") or ""
     data_response = state.get("data_response") or ""
+    nutrition_context = state.get("nutrition_context") or ""
     
     # Prompt Construction - Add contextual data to help the LLM respond
     parts = []
@@ -323,6 +405,8 @@ async def assistant_agent(state: MultiAgentState) -> dict:
             parts.append("[TODAYS_MEALS]\n" + "\n".join(meal_names[:20]))
     if data_response:
         parts.append(f"[DATA]\n{data_response}\n[DATA_RULE]\nUse DATA only if directly relevant to the current question.")
+    if nutrition_context:
+        parts.append(f"[OPEN_FOOD_FACTS_NUTRITION]\n{nutrition_context}\n[NUTRITION_RULE]\nIncorporate these exact macros into your response.")
     
     # Build system message with persona and context
     system_content = SYSTEM_PERSONA
@@ -339,7 +423,15 @@ async def assistant_agent(state: MultiAgentState) -> dict:
             llm_messages = [SystemMessage(content=system_content)] + messages
             resp = await llm.ainvoke(llm_messages)
             final_response = resp.content
-        except Exception:
+            
+            # Strip thought blocks if they exist
+            if "<thought>" in final_response:
+                final_response = re.sub(r"<thought>.*?</thought>\s*", "", final_response, flags=re.DOTALL).strip()
+                # If model forgot closing tag, strip the opening tag at least
+                final_response = final_response.replace("<thought>", "").strip()
+                
+        except Exception as e:
+            print(f"LLM INVOCATION ERROR: {e}")
             final_response = "I'm having trouble thinking right now. Please try again."
 
     # Confirmation message when a meal was logged
@@ -382,12 +474,14 @@ workflow = StateGraph(MultiAgentState)
 workflow.add_node("preprocessor", preprocessor_agent)
 workflow.add_node("researcher", research_agent)
 workflow.add_node("nurse", patient_data_agent)
+workflow.add_node("dietitian", dietitian_agent)
 workflow.add_node("assistant", assistant_agent)
 
 workflow.set_entry_point("preprocessor")
 workflow.add_edge("preprocessor", "researcher")
 workflow.add_edge("researcher", "nurse")
-workflow.add_edge("nurse", "assistant")
+workflow.add_edge("nurse", "dietitian")
+workflow.add_edge("dietitian", "assistant")
 workflow.add_edge("assistant", END)
 
 app = workflow.compile()

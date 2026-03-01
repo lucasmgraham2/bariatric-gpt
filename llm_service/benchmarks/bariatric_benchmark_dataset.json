@@ -1,0 +1,3617 @@
+{
+    "dataset_name": "Bariatric GPT Dietary Benchmark [Expanded]",
+    "description": "Expanded benchmark testing vegan/vegetarian diets, varying activity levels, calculated surgery phases, and output diversity across similar prompts.",
+    "instructions": "When running this benchmark against the LLM service /invoke_agent_graph endpoint, send the full payload provided in `simulated_payload`. Calculate the `surgery_date` dynamically by subtracting `target_surgery_offset_days` from the current testing date and inject it into the profile.",
+    "test_cases": [
+        {
+            "id": "pre_op_standard_sedentary",
+            "category": "pre-op",
+            "target_surgery_offset_days": -14,
+            "simulated_payload": {
+                "message": "Is it okay to eat a large pizza tonight? Surgery is in 2 weeks.",
+                "user_id": "user_pre_op_standard_sedentary",
+                "patient_id": "user_pre_op_standard_sedentary",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Strongly advise against high-fat/carb meals. Emphasize liver shrinking diet to reduce surgical risk.",
+            "tools_expected": []
+        },
+        {
+            "id": "pre_op_vegan_active",
+            "category": "pre-op",
+            "target_surgery_offset_days": -10,
+            "simulated_payload": {
+                "message": "What are my protein options for the liver shrinking diet? I am very active.",
+                "user_id": "user_pre_op_vegan_active",
+                "patient_id": "user_pre_op_vegan_active",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest low-carb, low-fat vegan plant-based protein shakes or meal replacements suitable for pre-op liver shrinking, while acknowledging their active lifestyle.",
+            "tools_expected": []
+        },
+        {
+            "id": "pre_op_veg_light",
+            "category": "pre-op",
+            "target_surgery_offset_days": -3,
+            "simulated_payload": {
+                "message": "I am so hungry on this clear liquid diet right before surgery. Can I have a smoothie with Greek yogurt?",
+                "user_id": "user_pre_op_veg_light",
+                "patient_id": "user_pre_op_veg_light",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Reinforce strict pre-op clear liquid diet (if 3 days prior). Advise against yogurt as it is not a clear liquid. Suggest vegetable broth or sugar-free clear beverages.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase1_standard",
+            "category": "phase-1",
+            "target_surgery_offset_days": 2,
+            "simulated_payload": {
+                "message": "Can I have creamy chicken soup?",
+                "user_id": "user_phase1_standard",
+                "patient_id": "user_phase1_standard",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Patient is in Phase 1 (Clear Liquids). Creamy soups are too heavy; recommend clear broth, water, or sugar-free gelatin instead.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase1_vegan",
+            "category": "phase-1",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "Can I drink soy milk for protein? I had surgery 3 days ago.",
+                "user_id": "user_phase1_vegan",
+                "patient_id": "user_phase1_vegan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Patient is in Phase 1 (Clear Liquids). Soy milk is a full liquid. Advise clear vegetable broth or clear vegan protein water.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase1_vegetarian",
+            "category": "phase-1",
+            "target_surgery_offset_days": 4,
+            "simulated_payload": {
+                "message": "Is bone broth okay right now?",
+                "user_id": "user_phase1_vegetarian",
+                "patient_id": "user_phase1_vegetarian",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Bone broth is a clear liquid but NOT vegetarian. Remind the patient of their vegetarian diet type and suggest clear vegetable broth or miso broth without solids.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase2_standard",
+            "category": "phase-2",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "Can I have a protein shake with strawberries?",
+                "user_id": "user_phase2_standard",
+                "patient_id": "user_phase2_standard",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Patient is in Phase 2 (Full Liquids). Protein shakes are appropriate. Advise blending strawberries completely to avoid seeds or straining them.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase2_vegan_1",
+            "category": "phase-2",
+            "target_surgery_offset_days": 9,
+            "simulated_payload": {
+                "message": "What kind of protein shakes can I have?",
+                "user_id": "user_phase2_vegan_1",
+                "patient_id": "user_phase2_vegan_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest vegan protein powders (pea, soy, rice) mixed with unsweetened non-dairy milk (almond, soy) or water. Avoid whey/casein as they are dairy.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase2_vegan_2",
+            "category": "phase-2",
+            "target_surgery_offset_days": 12,
+            "simulated_payload": {
+                "message": "I am walking a lot and need energy. Can I eat pureed tofu?",
+                "user_id": "user_phase2_vegan_2",
+                "patient_id": "user_phase2_vegan_2",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "At 12 days, patient is typically finishing Phase 2 (Full Liquids) and transitioning to Phase 3. Soft silken tofu blended into a liquid smoothie is acceptable, but solid pieces must be avoided until Phase 3.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase2_veg",
+            "category": "phase-2",
+            "target_surgery_offset_days": 14,
+            "simulated_payload": {
+                "message": "Can I drink full fat milk for calories?",
+                "user_id": "user_phase2_veg",
+                "patient_id": "user_phase2_veg",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Advise against full-fat milk as high fat can cause dumping syndrome or digestive issues post-op. Suggest low-fat or skim milk instead.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase3_vegan_1",
+            "category": "phase-3",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "Can I have pureed lentils?",
+                "user_id": "user_phase3_vegan_1",
+                "patient_id": "user_phase3_vegan_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Yes, pureed lentils are an excellent vegan source of protein for Phase 3. Remind them to eat slowly and ensure it is completely smooth.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase3_vegan_2",
+            "category": "phase-3",
+            "target_surgery_offset_days": 22,
+            "simulated_payload": {
+                "message": "Can I have raw spinach salad?",
+                "user_id": "user_phase3_vegan_2",
+                "patient_id": "user_phase3_vegan_2",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "No, raw vegetables are too tough for Phase 3. Advise cooking spinach until very soft and pureeing it, or wait until Phase 5 for raw greens.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase3_veg_1",
+            "category": "phase-3",
+            "target_surgery_offset_days": 18,
+            "simulated_payload": {
+                "message": "Can I have scrambled eggs?",
+                "user_id": "user_phase3_veg_1",
+                "patient_id": "user_phase3_veg_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Yes, very soft, moist scrambled eggs are usually appropriate for Phase 3. Suggest adding a little unsweetened plant milk or skim milk to keep them moist.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase3_standard",
+            "category": "phase-3",
+            "target_surgery_offset_days": 25,
+            "simulated_payload": {
+                "message": "I want a steak.",
+                "user_id": "user_phase3_standard",
+                "patient_id": "user_phase3_standard",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Advise against steak as it is too tough and dry. Suggest soft moist proteins like chicken thigh pureed, or soft fish.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase4_vegan_1",
+            "category": "phase-4",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "Can I have a veggie burger?",
+                "user_id": "user_phase4_vegan_1",
+                "patient_id": "user_phase4_vegan_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "A soft black bean or soy patty may be okay if chewed thoroughly, but avoid dry, hard, or overly processed patties. No bread/bun yet.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase4_veg_1",
+            "category": "phase-4",
+            "target_surgery_offset_days": 35,
+            "simulated_payload": {
+                "message": "Can I eat raw carrots for a snack?",
+                "user_id": "user_phase4_veg_1",
+                "patient_id": "user_phase4_veg_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "No, raw carrots are crunchy and hard to break down. Suggest soft cooked carrots instead.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase5_vegan_1",
+            "category": "phase-5",
+            "target_surgery_offset_days": 120,
+            "simulated_payload": {
+                "message": "I need a high protein vegan meal prep for work.",
+                "user_id": "user_phase5_vegan_1",
+                "patient_id": "user_phase5_vegan_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide a solid vegan bariatric meal plan focusing on dense proteins: tofu, tempeh, edamame, seitan (if tolerated), beans, and quinoa. Remind to prioritize protein first.",
+            "tools_expected": []
+        },
+        {
+            "id": "phase5_vegan_2",
+            "category": "phase-5",
+            "target_surgery_offset_days": 150,
+            "simulated_payload": {
+                "message": "I'm lifting weights now, need extra protein. What can I add?",
+                "user_id": "user_phase5_vegan_2",
+                "patient_id": "user_phase5_vegan_2",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Very Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest adding unsweetened soy milk, vegan protein powder, hemp seeds, or nutritional yeast. Acknowledge the very active lifestyle requires adequate fuel while keeping portions small.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_standard_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_standard_sedentary_meal_plan",
+                "patient_id": "user_sweep_pre-op_standard_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for pre-op and adjusted for Sedentary activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_standard_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_standard_sedentary_protein_target",
+                "patient_id": "user_sweep_pre-op_standard_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for pre-op. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_standard_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_standard_lightly_active_meal_plan",
+                "patient_id": "user_sweep_pre-op_standard_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for pre-op and adjusted for Lightly Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_standard_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_standard_lightly_active_protein_target",
+                "patient_id": "user_sweep_pre-op_standard_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for pre-op. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_standard_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_standard_active_meal_plan",
+                "patient_id": "user_sweep_pre-op_standard_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for pre-op and adjusted for Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_standard_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_standard_active_protein_target",
+                "patient_id": "user_sweep_pre-op_standard_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for pre-op. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegetarian_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_vegetarian_sedentary_meal_plan",
+                "patient_id": "user_sweep_pre-op_vegetarian_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for pre-op and adjusted for Sedentary activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegetarian_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_vegetarian_sedentary_protein_target",
+                "patient_id": "user_sweep_pre-op_vegetarian_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for pre-op. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegetarian_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_vegetarian_lightly_active_meal_plan",
+                "patient_id": "user_sweep_pre-op_vegetarian_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for pre-op and adjusted for Lightly Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegetarian_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_vegetarian_lightly_active_protein_target",
+                "patient_id": "user_sweep_pre-op_vegetarian_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for pre-op. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegetarian_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_vegetarian_active_meal_plan",
+                "patient_id": "user_sweep_pre-op_vegetarian_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for pre-op and adjusted for Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegetarian_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_vegetarian_active_protein_target",
+                "patient_id": "user_sweep_pre-op_vegetarian_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for pre-op. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegan_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_vegan_sedentary_meal_plan",
+                "patient_id": "user_sweep_pre-op_vegan_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for pre-op and adjusted for Sedentary activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegan_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_vegan_sedentary_protein_target",
+                "patient_id": "user_sweep_pre-op_vegan_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for pre-op. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegan_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_vegan_lightly_active_meal_plan",
+                "patient_id": "user_sweep_pre-op_vegan_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for pre-op and adjusted for Lightly Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegan_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_vegan_lightly_active_protein_target",
+                "patient_id": "user_sweep_pre-op_vegan_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for pre-op. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegan_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_pre-op_vegan_active_meal_plan",
+                "patient_id": "user_sweep_pre-op_vegan_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for pre-op and adjusted for Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_pre-op_vegan_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": -7,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_pre-op_vegan_active_protein_target",
+                "patient_id": "user_sweep_pre-op_vegan_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for pre-op. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_standard_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_standard_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-1_standard_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-1 and adjusted for Sedentary activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_standard_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_standard_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-1_standard_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-1. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_standard_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_standard_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-1_standard_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-1 and adjusted for Lightly Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_standard_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_standard_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-1_standard_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-1. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_standard_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_standard_active_meal_plan",
+                "patient_id": "user_sweep_phase-1_standard_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-1 and adjusted for Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_standard_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_standard_active_protein_target",
+                "patient_id": "user_sweep_phase-1_standard_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-1. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegetarian_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_vegetarian_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-1_vegetarian_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-1 and adjusted for Sedentary activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegetarian_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_vegetarian_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-1_vegetarian_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-1. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegetarian_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_vegetarian_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-1_vegetarian_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-1 and adjusted for Lightly Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegetarian_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_vegetarian_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-1_vegetarian_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-1. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegetarian_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_vegetarian_active_meal_plan",
+                "patient_id": "user_sweep_phase-1_vegetarian_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-1 and adjusted for Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegetarian_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_vegetarian_active_protein_target",
+                "patient_id": "user_sweep_phase-1_vegetarian_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-1. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegan_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_vegan_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-1_vegan_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-1 and adjusted for Sedentary activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegan_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_vegan_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-1_vegan_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-1. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegan_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_vegan_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-1_vegan_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-1 and adjusted for Lightly Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegan_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_vegan_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-1_vegan_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-1. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegan_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-1_vegan_active_meal_plan",
+                "patient_id": "user_sweep_phase-1_vegan_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-1 and adjusted for Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-1_vegan_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 3,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-1_vegan_active_protein_target",
+                "patient_id": "user_sweep_phase-1_vegan_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-1. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_standard_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_standard_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-2_standard_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-2 and adjusted for Sedentary activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_standard_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_standard_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-2_standard_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-2. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_standard_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_standard_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-2_standard_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-2 and adjusted for Lightly Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_standard_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_standard_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-2_standard_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-2. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_standard_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_standard_active_meal_plan",
+                "patient_id": "user_sweep_phase-2_standard_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-2 and adjusted for Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_standard_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_standard_active_protein_target",
+                "patient_id": "user_sweep_phase-2_standard_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-2. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegetarian_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_vegetarian_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-2_vegetarian_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-2 and adjusted for Sedentary activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegetarian_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_vegetarian_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-2_vegetarian_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-2. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegetarian_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_vegetarian_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-2_vegetarian_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-2 and adjusted for Lightly Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegetarian_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_vegetarian_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-2_vegetarian_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-2. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegetarian_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_vegetarian_active_meal_plan",
+                "patient_id": "user_sweep_phase-2_vegetarian_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-2 and adjusted for Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegetarian_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_vegetarian_active_protein_target",
+                "patient_id": "user_sweep_phase-2_vegetarian_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-2. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegan_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_vegan_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-2_vegan_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-2 and adjusted for Sedentary activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegan_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_vegan_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-2_vegan_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-2. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegan_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_vegan_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-2_vegan_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-2 and adjusted for Lightly Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegan_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_vegan_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-2_vegan_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-2. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegan_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-2_vegan_active_meal_plan",
+                "patient_id": "user_sweep_phase-2_vegan_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-2 and adjusted for Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-2_vegan_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 10,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-2_vegan_active_protein_target",
+                "patient_id": "user_sweep_phase-2_vegan_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-2. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_standard_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_standard_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-3_standard_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-3 and adjusted for Sedentary activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_standard_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_standard_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-3_standard_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-3. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_standard_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_standard_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-3_standard_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-3 and adjusted for Lightly Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_standard_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_standard_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-3_standard_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-3. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_standard_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_standard_active_meal_plan",
+                "patient_id": "user_sweep_phase-3_standard_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-3 and adjusted for Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_standard_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_standard_active_protein_target",
+                "patient_id": "user_sweep_phase-3_standard_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-3. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegetarian_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_vegetarian_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-3_vegetarian_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-3 and adjusted for Sedentary activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegetarian_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_vegetarian_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-3_vegetarian_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-3. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegetarian_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_vegetarian_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-3_vegetarian_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-3 and adjusted for Lightly Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegetarian_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_vegetarian_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-3_vegetarian_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-3. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegetarian_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_vegetarian_active_meal_plan",
+                "patient_id": "user_sweep_phase-3_vegetarian_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-3 and adjusted for Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegetarian_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_vegetarian_active_protein_target",
+                "patient_id": "user_sweep_phase-3_vegetarian_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-3. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegan_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_vegan_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-3_vegan_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-3 and adjusted for Sedentary activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegan_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_vegan_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-3_vegan_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-3. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegan_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_vegan_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-3_vegan_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-3 and adjusted for Lightly Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegan_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_vegan_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-3_vegan_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-3. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegan_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-3_vegan_active_meal_plan",
+                "patient_id": "user_sweep_phase-3_vegan_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-3 and adjusted for Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-3_vegan_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 20,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-3_vegan_active_protein_target",
+                "patient_id": "user_sweep_phase-3_vegan_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-3. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_standard_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_standard_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-4_standard_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-4 and adjusted for Sedentary activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_standard_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_standard_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-4_standard_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-4. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_standard_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_standard_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-4_standard_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-4 and adjusted for Lightly Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_standard_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_standard_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-4_standard_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-4. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_standard_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_standard_active_meal_plan",
+                "patient_id": "user_sweep_phase-4_standard_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-4 and adjusted for Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_standard_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_standard_active_protein_target",
+                "patient_id": "user_sweep_phase-4_standard_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-4. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegetarian_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_vegetarian_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-4_vegetarian_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-4 and adjusted for Sedentary activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegetarian_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_vegetarian_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-4_vegetarian_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-4. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegetarian_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_vegetarian_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-4_vegetarian_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-4 and adjusted for Lightly Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegetarian_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_vegetarian_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-4_vegetarian_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-4. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegetarian_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_vegetarian_active_meal_plan",
+                "patient_id": "user_sweep_phase-4_vegetarian_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-4 and adjusted for Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegetarian_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_vegetarian_active_protein_target",
+                "patient_id": "user_sweep_phase-4_vegetarian_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-4. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegan_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_vegan_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-4_vegan_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-4 and adjusted for Sedentary activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegan_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_vegan_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-4_vegan_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-4. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegan_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_vegan_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-4_vegan_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-4 and adjusted for Lightly Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegan_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_vegan_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-4_vegan_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-4. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegan_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-4_vegan_active_meal_plan",
+                "patient_id": "user_sweep_phase-4_vegan_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-4 and adjusted for Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-4_vegan_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 40,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-4_vegan_active_protein_target",
+                "patient_id": "user_sweep_phase-4_vegan_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-4. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_standard_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_standard_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-5_standard_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-5 and adjusted for Sedentary activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_standard_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_standard_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-5_standard_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-5. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_standard_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_standard_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-5_standard_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-5 and adjusted for Lightly Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_standard_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_standard_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-5_standard_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-5. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_standard_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_standard_active_meal_plan",
+                "patient_id": "user_sweep_phase-5_standard_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Standard meal options appropriate for phase-5 and adjusted for Active activity level. MUST adhere to Standard constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_standard_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_standard_active_protein_target",
+                "patient_id": "user_sweep_phase-5_standard_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Standard protein sources appropriate for phase-5. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegetarian_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_vegetarian_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-5_vegetarian_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-5 and adjusted for Sedentary activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegetarian_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_vegetarian_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-5_vegetarian_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-5. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegetarian_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_vegetarian_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-5_vegetarian_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-5 and adjusted for Lightly Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegetarian_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_vegetarian_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-5_vegetarian_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-5. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegetarian_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_vegetarian_active_meal_plan",
+                "patient_id": "user_sweep_phase-5_vegetarian_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegetarian meal options appropriate for phase-5 and adjusted for Active activity level. MUST adhere to Vegetarian constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegetarian_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_vegetarian_active_protein_target",
+                "patient_id": "user_sweep_phase-5_vegetarian_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegetarian protein sources appropriate for phase-5. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegan_sedentary_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_vegan_sedentary_meal_plan",
+                "patient_id": "user_sweep_phase-5_vegan_sedentary_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-5 and adjusted for Sedentary activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegan_sedentary_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_vegan_sedentary_protein_target",
+                "patient_id": "user_sweep_phase-5_vegan_sedentary_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-5. Contextualize advice for Sedentary activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegan_lightly_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_vegan_lightly_active_meal_plan",
+                "patient_id": "user_sweep_phase-5_vegan_lightly_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-5 and adjusted for Lightly Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegan_lightly_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_vegan_lightly_active_protein_target",
+                "patient_id": "user_sweep_phase-5_vegan_lightly_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-5. Contextualize advice for Lightly Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegan_active_meal_plan",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "What are some good meal options for me today?",
+                "user_id": "user_sweep_phase-5_vegan_active_meal_plan",
+                "patient_id": "user_sweep_phase-5_vegan_active_meal_plan",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide Vegan meal options appropriate for phase-5 and adjusted for Active activity level. MUST adhere to Vegan constraints and avoid inappropriate textures for this phase.",
+            "tools_expected": []
+        },
+        {
+            "id": "sweep_phase-5_vegan_active_protein_target",
+            "category": "parameter_sweep",
+            "target_surgery_offset_days": 90,
+            "simulated_payload": {
+                "message": "How can I hit my protein goals today?",
+                "user_id": "user_sweep_phase-5_vegan_active_protein_target",
+                "patient_id": "user_sweep_phase-5_vegan_active_protein_target",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Suggest Vegan protein sources appropriate for phase-5. Contextualize advice for Active activity.",
+            "tools_expected": []
+        },
+        {
+            "id": "diversity_check_vegan_phase3_1",
+            "category": "diversity",
+            "target_surgery_offset_days": 25,
+            "simulated_payload": {
+                "message": "Give me a full day meal plan.",
+                "user_id": "diverse_user_1",
+                "patient_id": "diverse_user_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide a Vegan Phase 3 (Pureed) meal plan. Across the 5 iterations, the model MUST provide diverse menu choices rather than repeating the same foods. Needs to output soft proteins like pureed lentils, silken tofu, and soft beans.",
+            "tools_expected": []
+        },
+        {
+            "id": "diversity_check_vegan_phase3_2",
+            "category": "diversity",
+            "target_surgery_offset_days": 25,
+            "simulated_payload": {
+                "message": "Give me a full day meal plan.",
+                "user_id": "diverse_user_2",
+                "patient_id": "diverse_user_2",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide a Vegan Phase 3 (Pureed) meal plan. Across the 5 iterations, the model MUST provide diverse menu choices rather than repeating the same foods. Needs to output soft proteins like pureed lentils, silken tofu, and soft beans.",
+            "tools_expected": []
+        },
+        {
+            "id": "diversity_check_vegan_phase3_3",
+            "category": "diversity",
+            "target_surgery_offset_days": 25,
+            "simulated_payload": {
+                "message": "Give me a full day meal plan.",
+                "user_id": "diverse_user_3",
+                "patient_id": "diverse_user_3",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide a Vegan Phase 3 (Pureed) meal plan. Across the 5 iterations, the model MUST provide diverse menu choices rather than repeating the same foods. Needs to output soft proteins like pureed lentils, silken tofu, and soft beans.",
+            "tools_expected": []
+        },
+        {
+            "id": "diversity_check_vegan_phase3_4",
+            "category": "diversity",
+            "target_surgery_offset_days": 25,
+            "simulated_payload": {
+                "message": "Give me a full day meal plan.",
+                "user_id": "diverse_user_4",
+                "patient_id": "diverse_user_4",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide a Vegan Phase 3 (Pureed) meal plan. Across the 5 iterations, the model MUST provide diverse menu choices rather than repeating the same foods. Needs to output soft proteins like pureed lentils, silken tofu, and soft beans.",
+            "tools_expected": []
+        },
+        {
+            "id": "diversity_check_vegan_phase3_5",
+            "category": "diversity",
+            "target_surgery_offset_days": 25,
+            "simulated_payload": {
+                "message": "Give me a full day meal plan.",
+                "user_id": "diverse_user_5",
+                "patient_id": "diverse_user_5",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Lightly Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Provide a Vegan Phase 3 (Pureed) meal plan. Across the 5 iterations, the model MUST provide diverse menu choices rather than repeating the same foods. Needs to output soft proteins like pureed lentils, silken tofu, and soft beans.",
+            "tools_expected": []
+        },
+        {
+            "id": "log_meal_sweep_0",
+            "category": "meal-logging",
+            "target_surgery_offset_days": 22,
+            "simulated_payload": {
+                "message": "I just ate 1/2 cup of pureed lentils with 9g protein and 115 calories.",
+                "user_id": "log_user_0",
+                "patient_id": "log_user_0",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "The AI should acknowledge the meal and successfully invoke the 'record_meal' tool to log 9g protein and 115 calories.",
+            "tools_expected": [
+                "record_meal"
+            ]
+        },
+        {
+            "id": "log_meal_sweep_1",
+            "category": "meal-logging",
+            "target_surgery_offset_days": 45,
+            "simulated_payload": {
+                "message": "I just ate a soft boiled egg, 6g protein, 70 cals.",
+                "user_id": "log_user_1",
+                "patient_id": "log_user_1",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "The AI should acknowledge the meal and successfully invoke the 'record_meal' tool to log 6g protein and 70 calories.",
+            "tools_expected": [
+                "record_meal"
+            ]
+        },
+        {
+            "id": "log_meal_sweep_2",
+            "category": "meal-logging",
+            "target_surgery_offset_days": 100,
+            "simulated_payload": {
+                "message": "I just ate 1 cup of Greek yogurt, 15g protein, 100 calories.",
+                "user_id": "log_user_2",
+                "patient_id": "log_user_2",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "The AI should acknowledge the meal and successfully invoke the 'record_meal' tool to log 15g protein and 100 calories.",
+            "tools_expected": [
+                "record_meal"
+            ]
+        },
+        {
+            "id": "edge_error_gibberish",
+            "category": "edge-case",
+            "target_surgery_offset_days": 50,
+            "simulated_payload": {
+                "message": "asdfasdfasdf",
+                "user_id": "user_edge_error_gibberish",
+                "patient_id": "user_edge_error_gibberish",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model should gracefully handle the gibberish input, asking for clarification on how it can help with the user's dietary journey.",
+            "tools_expected": []
+        },
+        {
+            "id": "edge_conflict_allergies",
+            "category": "edge-case",
+            "target_surgery_offset_days": 15,
+            "simulated_payload": {
+                "message": "I need protein ideas. Im allergic to soy and nuts.",
+                "user_id": "user_edge_conflict_allergies",
+                "patient_id": "user_edge_conflict_allergies",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegan",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Patient is Vegan Phase 2/3 but allergic to soy and nuts. Model MUST suggest alternative vegan protein sources like pea protein, hemp seeds, or quinoa (if phase appropriate). It must NOT suggest soy milk, tofu, peanut butter, or dairy.",
+            "tools_expected": []
+        },
+        {
+            "id": "edge_tool_failure_sim",
+            "category": "meal-logging",
+            "target_surgery_offset_days": 80,
+            "simulated_payload": {
+                "message": "I ate half a pizza 300 calories 15g protein. But don't log it yet.",
+                "user_id": "user_edge_tool_failure_sim",
+                "patient_id": "user_edge_tool_failure_sim",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model should acknowledge the meal but respect the user's request NOT to log it. It should evaluate the choice of pizza against the bariatric diet.",
+            "tools_expected": []
+        },
+        {
+            "id": "edge_extreme_weight",
+            "category": "edge-case",
+            "target_surgery_offset_days": 300,
+            "simulated_payload": {
+                "message": "I ran a marathon today. I weigh 140lbs now. What should I eat?",
+                "user_id": "user_edge_extreme_weight",
+                "patient_id": "user_edge_extreme_weight",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Very Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Acknowledge the massive accomplishment and extreme activity level. Recommend high-protein, nutrient-dense bariatric foods suitable for Phase 5 maintenance and extreme endurance recovery, ensuring they eat enough to sustain 140lbs at that activity level.",
+            "tools_expected": []
+        },
+        {
+            "id": "edge_medical_emergency",
+            "category": "edge-case",
+            "target_surgery_offset_days": 5,
+            "simulated_payload": {
+                "message": "My incisions are bleeding and I have a fever of 103.",
+                "user_id": "user_edge_medical_emergency",
+                "patient_id": "user_edge_medical_emergency",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model MUST immediately instruct the user to seek emergency medical attention or contact their surgeon immediately. It should not provide dietary advice in place of medical triage.",
+            "tools_expected": []
+        },
+        {
+            "id": "nutrition_lookup_chicken",
+            "category": "nutrition",
+            "target_surgery_offset_days": 100,
+            "simulated_payload": {
+                "message": "How much protein is in 100g of chicken breast? I need to know for my macros.",
+                "user_id": "user_nutrition_chicken",
+                "patient_id": "user_nutrition_chicken",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model should use the nutrition context from the Dietitian agent (OpenFoodFacts) to provide exact macronutrients for 100g of chicken breast, specifically citing the protein amount. It MUST use the format 'Here are the exact macros from OpenFoodFacts:'",
+            "tools_expected": [
+                "search_nutrition"
+            ]
+        },
+        {
+            "id": "nutrition_lookup_edamame_phase3",
+            "category": "nutrition",
+            "target_surgery_offset_days": 21,
+            "simulated_payload": {
+                "message": "I'm in Phase 3. Can I have 1 cup of edamame? What are the macros?",
+                "user_id": "user_nutrition_edamame",
+                "patient_id": "user_nutrition_edamame",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model must fetch nutritional data for edamame using the search_nutrition tool. Model must note the 'Here are the exact macros from OpenFoodFacts:' format. Model must warn that edamame needs to be purely blended/pureed to be safe for Phase 3.",
+            "tools_expected": [
+                "search_nutrition"
+            ]
+        },
+        {
+            "id": "ood_coding_question",
+            "category": "out-of-scope",
+            "target_surgery_offset_days": 100,
+            "simulated_payload": {
+                "message": "Can you write a python script to sort a list of integers?",
+                "user_id": "user_ood_coding",
+                "patient_id": "user_ood_coding",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model must politely decline to write Python code and remind the user that its sole purpose is to serve as a Bariatric Care Assistant.",
+            "tools_expected": []
+        },
+        {
+            "id": "ood_general_life_advice",
+            "category": "out-of-scope",
+            "target_surgery_offset_days": 5,
+            "simulated_payload": {
+                "message": "I'm having a lot of trouble with my boss at work lately. Should I quit my job?",
+                "user_id": "user_ood_life",
+                "patient_id": "user_ood_life",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Standard",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Sedentary",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model must empathize with their stress but politely decline to give career or life advice, redirecting them to focus on their bariatric recovery or suggesting they speak to a counselor.",
+            "tools_expected": []
+        },
+        {
+            "id": "ood_unrelated_medical",
+            "category": "out-of-scope",
+            "target_surgery_offset_days": 21,
+            "simulated_payload": {
+                "message": "I twisted my ankle playing basketball yesterday and it's really swollen. Should I ice it or use heat?",
+                "user_id": "user_ood_medical",
+                "patient_id": "user_ood_medical",
+                "profile": {
+                    "disliked_foods": [],
+                    "allergies": [],
+                    "diet_type": "Vegetarian",
+                    "weight": 250.0,
+                    "weight_unit": "lbs",
+                    "date_of_birth": "1985-05-15",
+                    "surgery_date": "DYNAMIC_CALCULATED_DATE",
+                    "activity_level": "Active",
+                    "medications": []
+                },
+                "memory": "",
+                "conversation_log": "[]"
+            },
+            "expected_guidance": "Model must decline diagnosing or treating musculoskeletal injuries and advise them to consult a general physician or physical therapist, reiterating it is a Bariatric Assistant focused on diet and surgical recovery.",
+            "tools_expected": []
+        }
+    ]
+}
