@@ -177,6 +177,95 @@ class _MealsScreenState extends State<MealsScreen> {
     );
   }
 
+  Future<void> _editMeal(int index) async {
+    final meal = _todaysMeals[index];
+    final editFoodController = TextEditingController(text: meal['food']);
+    final editProteinController = TextEditingController(text: meal['protein']?.toString() ?? '0');
+    final editCaloriesController = TextEditingController(text: meal['calories']?.toString() ?? '0');
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Edit Meal'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: editFoodController,
+                  decoration: const InputDecoration(
+                    labelText: 'Food / Meal Name',
+                    prefixIcon: Icon(Icons.restaurant),
+                  ),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editProteinController,
+                  decoration: const InputDecoration(
+                    labelText: 'Protein (g)',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                  ],
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: editCaloriesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Calories',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
+                  ],
+                  textInputAction: TextInputAction.done,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final updatedMeal = {
+                  'food': editFoodController.text.trim(),
+                  'protein': double.tryParse(editProteinController.text.trim()) ?? 0,
+                  'calories': double.tryParse(editCaloriesController.text.trim()) ?? 0,
+                };
+                Navigator.of(context).pop(updatedMeal);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _todaysMeals[index] = result;
+        _calculateTotals();
+      });
+      await _saveMealsToProfile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Meal updated successfully')),
+        );
+      }
+    }
+
+    editFoodController.dispose();
+    editProteinController.dispose();
+    editCaloriesController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -383,9 +472,20 @@ class _MealsScreenState extends State<MealsScreen> {
           'Protein: ${meal['protein']?.toStringAsFixed(1) ?? 0}g  •  Calories: ${meal['calories']?.toStringAsFixed(0) ?? 0}',
           style: const TextStyle(fontSize: 12),
         ),
-        trailing: IconButton(
-          icon: Icon(Icons.delete_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.redAccent : Colors.red),
-          onPressed: () => _removeMeal(index),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit_outlined, color: Theme.of(context).colorScheme.primary),
+              onPressed: () => _editMeal(index),
+              tooltip: 'Edit meal',
+            ),
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.redAccent : Colors.red),
+              onPressed: () => _removeMeal(index),
+              tooltip: 'Delete meal',
+            ),
+          ],
         ),
       ),
     );

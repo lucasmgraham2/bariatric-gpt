@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from .graph_medical_multiagent import app, generate_and_persist_memory
+from .graph_medical_multiagent import app
 from langchain_core.messages import HumanMessage, AIMessage
 import json
 
@@ -18,7 +18,7 @@ class ChatRequest(BaseModel):
     debug: Optional[bool] = False
 
 @router.post("/invoke_agent_graph")
-async def invoke_chat(request: ChatRequest, background_tasks: BackgroundTasks):
+async def invoke_chat(request: ChatRequest):
     """
     Receives a user message and runs it through the Multi-Agent Medical System.
     The system automatically routes queries to appropriate specialist agents.
@@ -77,15 +77,6 @@ async def invoke_chat(request: ChatRequest, background_tasks: BackgroundTasks):
         
         if result_state.get("conversation_log"):
             resp["conversation_log"] = result_state["conversation_log"]
-        
-        if final_answer and request.user_id:
-            background_tasks.add_task(
-                generate_and_persist_memory,
-                user_id=request.user_id,
-                prev_memory=request.memory or "",
-                last_message=request.message,
-                assistant_response=final_answer
-            )
         
         if request.debug:
             resp["medical_response"] = result_state.get("medical_response")
