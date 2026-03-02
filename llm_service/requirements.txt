@@ -10,3 +10,5 @@ langgraph
 psycopg2-binary
 chromadb
 pypdf
+google-genai
+python-dotenv

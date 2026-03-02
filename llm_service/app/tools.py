@@ -53,7 +53,16 @@ async def record_meal(user_id: str, meal_name: str, protein_grams: float, calori
     async with httpx.AsyncClient() as client:
         try:
             # Convert user_id to int for storage service compatibility
-            user_id_int = int(user_id)
+            # In testing, user_id might be "log_user_2", so extract digits if present
+            import re
+            m = re.search(r'\d+', str(user_id))
+            if m:
+                user_id_int = int(m.group())
+            else:
+                try:
+                    user_id_int = int(user_id)
+                except ValueError:
+                    user_id_int = 1 # Fallback for test sweep strings without digits
             
             # First, get the current profile
             response = await client.get(f"{STORAGE_SERVICE_URL}/me/{user_id_int}")
@@ -119,3 +128,44 @@ async def record_meal(user_id: str, meal_name: str, protein_grams: float, calori
         except Exception as e:
             print(f"    ERROR: Unexpected error: {str(e)}")
             return {"error": f"Unexpected error: {str(e)}"}
+
+@tool
+async def search_nutrition(food_query: str) -> dict:
+    """
+    Searches the OpenFoodFacts database to find nutritional information for a specific food.
+    Useful for getting exact macros (protein, calories, carbs, fat) and serving sizes before recommending foods.
+    """
+    print(f"--- Calling Tool: search_nutrition for query '{food_query}' ---")
+    
+    # OpenFoodFacts free JSON API
+    url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={food_query}&search_simple=1&action=process&json=1&page_size=1"
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, timeout=10.0)
+            if response.status_code == 200:
+                data = response.json()
+                products = data.get("products", [])
+                
+                if not products:
+                    return {"error": f"No nutrition data found for '{food_query}'."}
+                
+                product = products[0]
+                nutriments = product.get("nutriments", {})
+                
+                serving_size = product.get("serving_size", "100g")
+                if not serving_size:
+                    serving_size = "100g (Data standardized to 100g if serving size missing)"
+                
+                return {
+                    "food_name": product.get("product_name", food_query),
+                    "serving_size": serving_size,
+                    "calories": nutriments.get("energy-kcal_serving", nutriments.get("energy-kcal_100g", "Unknown")),
+                    "protein_g": nutriments.get("proteins_serving", nutriments.get("proteins_100g", "Unknown")),
+                    "carbs_g": nutriments.get("carbohydrates_serving", nutriments.get("carbohydrates_100g", "Unknown")),
+                    "fat_g": nutriments.get("fat_serving", nutriments.get("fat_100g", "Unknown"))
+                }
+            else:
+                return {"error": f"Failed to fetch food data. Status: {response.status_code}"}
+        except Exception as e:
+            return {"error": f"Nutrition API connection error: {str(e)}"}

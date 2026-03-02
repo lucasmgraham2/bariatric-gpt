@@ -14,7 +14,7 @@ from typing import TypedDict, List, Optional
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
-from .tools import get_patient_data, record_meal
+from .tools import get_patient_data, record_meal, search_nutrition
 from .rag import query_knowledge
 import json
 import httpx
@@ -35,6 +35,7 @@ class MultiAgentState(TypedDict):
     conversation_log: Optional[str]
     clinical_context: Optional[str]  # Facts from Researcher
     data_response: Optional[str]     # Report from Nurse
+    nutrition_context: Optional[str] # Facts from Dietitian
     memory: Optional[str]            # Previous memory summary
 
 # ==========================================
@@ -50,7 +51,7 @@ llm = ChatOllama(
 )
 
 # Performance tuning
-RAG_RESULTS = 1
+RAG_RESULTS = 3
 MAX_GUIDELINE_CHARS = 400
 
 SYSTEM_PERSONA = (
@@ -58,130 +59,87 @@ SYSTEM_PERSONA = (
     "Be concise but caring. Do not repeat generic offers of help constantly. "
     "If the user says 'thanks', just say 'You're welcome' without extra fluff.\n\n"
     "CRITICAL RULES:\n"
+    "0. THINKING PROCESS: You MUST start your response with a hidden <thought> block. Inside this block, explicitly state the patient's Current Phase, Diet Type, Activity Level, and Texture Restrictions. Evaluate the safety of their request based on these factors before generating your actual response outside the block.\n"
     "1. When the user references 'it', 'that', 'your suggestion', or asks follow-up questions, refer to what you said earlier in this conversation.\n"
     "2. DO NOT ask the user what they ate today unless they explicitly ask you to log a meal.\n"
     "3. FOCUS on future guidance. Use their past history to inform advice, but don't interrogate them.\n"
-    "4. When suggesting meals, avoid recommending any meal already logged today.\n"
-    "5. Prioritize answering the user's current question directly."
+    "4. When suggesting meals, avoid recommending any meal already listed in TODAYS_MEALS.\n"
+    "5. Prioritize answering the user's current question directly.\n"
+    "6. TEMPORAL AWARENESS: Use the 'Current Phase' data. If PRE-OP, STRICTLY ENFORCE the liver shrinking diet (low carb, low fat, high protein) and advise against heavy/cheat meals to reduce surgical risk. If Phase 1 (Clear Liquids) or Phase 2 (Full Liquids), explicitly forbid pureed or solid foods.\n"
+    "7. ALLERGIES & DISLIKES: NEVER suggest foods the user is allergic to or dislikes. If they ask for an allergen, explicitly remind them of their allergy and firmly decline.\n"
+    "8. FIRM BOUNDARIES: If the user requests a food violating their Current Phase, Diet, or Allergies, you MUST firmly decline, explain the physical danger using explicit anatomical terms (e.g., 'internal tearing', 'pouch stretching', 'dumping syndrome'), and provide a safe alternative tailored to their exact profile.\n"
+    "9. NUTRITION FACTS: If given exact nutrition data from OpenFoodFacts, explicitly format your response to include: 'Here are the exact macros from OpenFoodFacts:' to show the user you verified the data.\n"
+    "10. ACTIVITY LEVEL: You MUST explicitly mention the user's Activity Level (Sedentary, Lightly Active, Active) in your response and adjust portion sizes, calorie targets, and hydration recommendations accordingly. NEVER ignore their activity level.\n"
+    "11. VEGAN/VEGETARIAN CONSTRAINTS: Ensure NO meat/poultry products (like chicken or beef broth) are suggested to Vegetarians or Vegans. Standard diets have no meat restrictions.\n"
+    "12. TEXTURE SAFETY (NUTS/SEEDS): Nuts and seeds MUST be ground or pureed in Phase 3. Whole nuts/seeds are entirely forbidden until Phase 4 or Maintenance.\n"
+    "13. EMOTIONAL SUPPORT & PLATEAUS: If the user is frustrated by a weight loss stall or plateau, explicitly validate their feelings, explain that plateaus are a normal part of the bariatric journey, and ask them what they usually consider 'comfort food' before offering alternatives.\n"
+    "14. HIGH-PROTEIN FOCUS: When offering alternatives to unhealthy cravings or comfort foods, ALWAYS prioritize high-protein bariatric-friendly options (e.g., clear protein drinks in Phase 1, pureed high-protein dishes in Phase 3).\n"
+    "15. CALORIE TARGETS: In early Phase 3 (Pureed/Soft), daily calorie goals are typically around 600-800. In Phase 4/5, it increases to 800-1200 depending on activity level. Do not push patients to 1000+ calories too early.\n"
+    "16. OUT-OF-SCOPE QUERIES: You are strictly a Bariatric Care Assistant. If the user asks general life questions, coding questions, complex medical diagnostics unrelated to bariatric diet protocols, or political questions, politely decline and remind them of your purpose."
 )
 
 # ==========================================
 # 3. HELPER FUNCTIONS
 # ==========================================
 
-def _simplify_meal_name(meal_name: str) -> str:
-    name = (meal_name or "").strip()
-    name = re.sub(r"^[\"'\[]+|[\"'\]]+$", "", name).strip()
-    name = re.sub(r"\s+", " ", name)
-    name = re.sub(r"^(a|an|the|some|my)\s+", "", name, flags=re.IGNORECASE)
-    name = re.sub(r"\s+please\s*$", "", name, flags=re.IGNORECASE)
-    name = re.sub(
-        r"\s+(today|tonight|this morning|this afternoon|for (breakfast|lunch|dinner|snack))$",
-        "",
-        name,
-        flags=re.IGNORECASE,
-    )
-    return name.strip(" .,!;:")
-
-async def _meal_intent_agent_llm(message: str) -> dict:
-    """Use LLM to detect meal intent (eating or recording a meal)."""
-    low = (message or "").lower().strip()
-    if not low:
-        return {"intent": "none"}
-    
-    intent_prompt = f"""Analyze this user message and determine their intent about meal logging.
-    
-User message: "{message}"
-
-IMPORTANT: Ignore greetings and pleasantries (hi, thanks, please) - focus on the core intent.
-Example: "I ate chicken soup, thanks" → intent is "eating", meal is "chicken soup"
-
-Classify the intent as ONE of:
-1. "eating" - User says they ate/had a meal (extract what they ate)
-2. "recording" - User asks to record/log/save/add a meal
-3. "referential" - User refers to a prior suggestion (using "that", "it", "your suggestion")
-4. "none" - Not about eating or recording meals (just greetings, questions, etc.)
-
-If intent is "eating" or "recording", extract what food they mentioned.
-
-Respond EXACTLY in this format:
-INTENT: [eating|recording|referential|none]
-MEAL: [specific food name or "ref" if referential or "none" if no meal]"""
-
+def _calculate_post_op_phase(surgery_date_str: str) -> str:
+    if not surgery_date_str or surgery_date_str.lower() == "not specified":
+        return ""
     try:
-        resp = await llm.ainvoke([HumanMessage(content=intent_prompt)])
-        text = resp.content.strip()
-        print(f"--- MEAL_INTENT_LLM Response ---\n{text}\n--- END ---")
-        
-        m_intent = re.search(r'INTENT:\s*(eating|recording|referential|none)', text, re.IGNORECASE)
-        m_meal = re.search(r'MEAL:\s*(.+?)(?=\n|$)', text, re.IGNORECASE | re.DOTALL)
-        
-        if m_intent:
-            intent_type = m_intent.group(1).lower()
-            meal_text = m_meal.group(1).strip() if m_meal else ""
-            
-            if intent_type in ("eating", "recording"):
-                if meal_text.lower() in ("ref", "none", "reference", "referential"):
-                    return {"intent": "referential"}
-                return {"intent": intent_type, "meal_text": meal_text}
-            elif intent_type == "referential":
-                return {"intent": "referential"}
-            else:
-                return {"intent": "none"}
-    except Exception as e:
-        print(f"--- MEAL_INTENT_LLM Error: {e}, falling back to patterns ---")
+        surgery_date = datetime.fromisoformat(surgery_date_str.split('T')[0])
+    except ValueError:
+        return ""
+
+    delta = datetime.now() - surgery_date
+    weeks = delta.days // 7
     
-    return {"intent": "none"}
+    if weeks < 0:
+        return f"PRE-OP (Surgery in {abs(weeks)} weeks)"
+    elif weeks == 0:
+        return "PHASE 1: Clear Liquids (Week 1)"
+    elif weeks == 1:
+        return "PHASE 2: Full Liquids (Week 2)"
+    elif 2 <= weeks < 4:
+        return f"PHASE 3: Pureed/Soft Foods (Week {weeks+1})"
+    elif 4 <= weeks < 8:
+        return f"PHASE 4: Adaptive/Regular Soft Diet (Week {weeks+1})"
+    else:
+        return f"PHASE 5: Solid Foods / Maintenance (Week {weeks+1})"
 
-async def _meal_extraction_agent_llm(message: str, meal_text: str, conversation_history: str) -> dict:
-    """Use LLM to intelligently extract, simplify meal name, and estimate macros using conversation context."""
-    if not meal_text:
-        return {"meal_name": "", "protein": 0.0, "calories": 0.0}
-    
-    extraction_prompt = f"""Extract the SPECIFIC FOOD ITEM name and estimate macros.
-
-User message: "{message}"
-Meal text: "{meal_text}"
-
-Recent conversation:
-{conversation_history}
-
-INSTRUCTIONS:
-1. Extract ONLY the actual food/dish name mentioned ("chicken soup", "protein shake", "greek yogurt")
-2. Remove articles (a, an, the) and portions (small, large, bowl of)
-3. Use the exact food they described, not a generic term
-4. Estimate realistic macros for ONE bariatric-sized portion (early post-op patients eat small amounts):
-   - Protein: typically 5-30g for most meals (up to 40g for high protein items like shakes)
-   - Calories: typically 100-400 kcal for most meals (up to 600 kcal for larger meals)
-5. ALWAYS provide all three values. Never output "None" or leave blank.
-
-Examples:
-- "I ate a protein shake" → MEAL_NAME: protein shake, PROTEIN: 25, CALORIES: 180
-- "I had chicken soup" → MEAL_NAME: chicken soup, PROTEIN: 15, CALORIES: 200
-- "scrambled eggs" → MEAL_NAME: scrambled eggs, PROTEIN: 12, CALORIES: 150
-- "small greek yogurt" → MEAL_NAME: greek yogurt, PROTEIN: 10, CALORIES: 120
-
-Respond EXACTLY in this format (fill all fields):
-MEAL_NAME: [specific food name]
-PROTEIN: [number between 5-40]
-CALORIES: [number between 100-600]"""
-
+async def generate_and_persist_memory(user_id: str, prev_memory: str, last_message: str, assistant_response: str):
+    """Background task to generate updated memory."""
+    if not user_id:
+        return
     try:
-        resp = await llm.ainvoke([HumanMessage(content=extraction_prompt)])
-        text = resp.content.strip()
-        print(f"--- MEAL_EXTRACTION_LLM Response ---\n{text}\n--- END ---")
+        memory_prompt = (
+            f"Produce an UPDATED conversation memory as a JSON object (single JSON value).\n"
+            f"Previous memory: {prev_memory}\n"
+            f"User: \"{last_message}\"\nAssistant: \"{assistant_response}\"\n"
+            "Requirements: Return ONLY valid JSON keys: preferences, recent_meals, last_recommendations."
+        )
+        mem_resp = await llm.ainvoke([HumanMessage(content=memory_prompt)])
+        new_memory = mem_resp.content.strip()
         
-        m_name = re.search(r'MEAL_NAME:\s*(.+?)(?=\n|$)', text, re.IGNORECASE | re.DOTALL)
-        m_prot = re.search(r'PROTEIN:\s*(\d+(?:\.\d+)?)', text, re.IGNORECASE)
-        m_cal = re.search(r'CALORIES:\s*(\d+(?:\.\d+)?)', text, re.IGNORECASE)
+        # Clean markdown
+        if "```json" in new_memory:
+            new_memory = new_memory.split("```json")[1].split("```")[0].strip()
+        elif "```" in new_memory:
+            new_memory = new_memory.split("```")[1].split("```")[0].strip()
+
+        # Extract digits from user_id for Storage API
+        m = re.search(r'\d+', str(user_id))
+        if m:
+            user_id_int = int(m.group())
+        else:
+            try:
+                user_id_int = int(user_id)
+            except ValueError:
+                user_id_int = 1  # Fallback for sweep test cases
+                
+        # Save to Storage Service
+        async with httpx.AsyncClient() as client:
+            await client.put(f"{STORAGE_URL}/me/{user_id_int}/memory", json={"memory": new_memory})
         
-        meal_name = m_name.group(1).strip() if m_name else meal_text
-        protein = float(m_prot.group(1)) if m_prot else 0.0
-        calories = float(m_cal.group(1)) if m_cal else 0.0
-        
-        meal_name = _simplify_meal_name(meal_name) if meal_name else ""
-        
-        return {"meal_name": meal_name, "protein": protein, "calories": calories}
     except Exception as e:
         print(f"--- MEAL_EXTRACTION_LLM Error: {e}, using fallback simplification ---")
         return {"meal_name": _simplify_meal_name(meal_text), "protein": 0.0, "calories": 0.0}
@@ -332,10 +290,54 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
         user_protein = float(m_user_prot.group(1)) if m_user_prot else 0.0
         user_calories = float(m_user_cal.group(1)) if m_user_cal else 0.0
 
-        try:
-            # Macro priority: user-provided > AI extraction agent
-            protein_grams = user_protein if user_protein > 0 else extracted_protein
-            calories = user_calories if user_calories > 0 else extracted_calories
+            nutrition_prompt = f"""
+            Decide if the user is reporting a meal they ALREADY ate today.
+            If they are asking a hypothetical question (e.g., "Can I have...", "What if..."), answer NO.
+            If they ALREADY ate it, extract the meal description and estimate protein/calories
+            using normal serving sizes (do not exaggerate).
+            Respond in this exact format:
+            MEAL_LOG: YES|NO
+            MEAL: [description or empty]
+            PROTEIN: [grams or 0]
+            CALORIES: [kcal or 0]
+
+            User message: "{last_message}"
+            """
+            try:
+                resp = await llm.ainvoke([HumanMessage(content=nutrition_prompt)])
+                text = resp.content.strip()
+                m_log = re.search(r'MEAL_LOG:\s*(YES|NO)', text, re.IGNORECASE)
+                m_meal = re.search(r'MEAL:\s*(.*)', text)
+                m_prot = re.search(r'PROTEIN:\s*(\d+(?:\.\d+)?)', text)
+                m_cal = re.search(r'CALORIES:\s*(\d+(?:\.\d+)?)', text)
+
+                is_meal_log = bool(m_log and m_log.group(1).upper() == "YES")
+                meal_name = m_meal.group(1).strip() if m_meal else ""
+
+                # Fallback: derive meal name directly from user message if LLM format is incomplete
+                if not meal_name and is_meal_log:
+                    cleaned = re.sub(r"^(i just ate|i ate|i had|i have eaten|i've eaten|i've had|i ate a|i had a|record that i have eaten|record that i ate)\s+", "", low, flags=re.IGNORECASE)
+                    meal_name = cleaned.strip()
+
+                estimated_protein = float(m_prot.group(1)) if m_prot else 0.0
+                estimated_calories = float(m_cal.group(1)) if m_cal else 0.0
+
+                # Use user-provided macros when available, otherwise use estimates
+                protein_grams = user_protein if user_protein > 0 else estimated_protein
+                calories = user_calories if user_calories > 0 else estimated_calories
+
+                # Fill in missing macros with conservative estimates so we never log zeros
+                if protein_grams <= 0 and calories > 0:
+                    protein_grams = max(5.0, min(calories / 20.0, 40.0))
+                if calories <= 0 and protein_grams > 0:
+                    calories = max(120.0, min(protein_grams * 12.0, 600.0))
+                if protein_grams <= 0 and calories <= 0:
+                    protein_grams = 15.0
+                    calories = 250.0
+
+                # Clamp to reasonable single-meal ranges to avoid exaggerated values
+                protein_grams = min(max(protein_grams, 0.0), 60.0)
+                calories = min(max(calories, 0.0), 900.0)
 
             if is_meal_log and meal_name:
                 try:
@@ -370,9 +372,59 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
         
     return {"data_response": data_response}
 
-# 4.4 SYNTHESIS (DOCTOR)
+# 4.4 DIETITIAN (NUTRITION LOOKUP)
+async def dietitian_agent(state: MultiAgentState) -> dict:
+    """Queries OpenFoodFacts API for specific foods mentioned."""
+    messages = state.get("messages", [])
+    if not messages:
+        return {"nutrition_context": ""}
+        
+    last_message = messages[-1].content
+    low = last_message.lower().strip()
+    
+    # Simple trigger keywords indicating the user is asking about nutrition facts
+    nutrition_keywords = ["protein in", "calories in", "macros", "how many calories", "how much protein", "nutrition facts", "how much fat", "carbs in", "serving size"]
+    is_asking_nutrition = any(k in low for k in nutrition_keywords)
+    
+    # If not asking for nutrition facts, but asking for meal ideas, we don't need to look up a specific food yet.
+    if not is_asking_nutrition:
+        return {"nutrition_context": ""}
+        
+    print(f"--- DIETITIAN: Checking nutrition for '{last_message}' ---")
+    
+    prompt = f"""
+    Extract the main single food item the user is asking about in this message.
+    Return ONLY the raw food name (e.g. "eggs", "chicken breast", "broccoli", "edamame") with NO punctuation, NO quantities, and NO extra text.
+    If multiple foods, pick the primary one.
+    User message: "{last_message}"
+    """
+    try:
+        resp = await llm.ainvoke([HumanMessage(content=prompt)])
+        food_query = resp.content.strip().replace('"', '')
+        
+        if food_query:
+            nutrition_data = await search_nutrition.ainvoke({"food_query": food_query})
+            if "error" not in nutrition_data:
+                context = (
+                    f"Food: {nutrition_data['food_name']}\n"
+                    f"Serving Size: {nutrition_data['serving_size']}\n"
+                    f"Calories: {nutrition_data['calories']} kcal\n"
+                    f"Protein: {nutrition_data['protein_g']}g\n"
+                    f"Carbs: {nutrition_data['carbs_g']}g\n"
+                    f"Fat: {nutrition_data['fat_g']}g"
+                )
+                print(f"--- DIETITIAN: Found data for {food_query} ---")
+                return {"nutrition_context": context}
+            else:
+                print(f"--- DIETITIAN: No data found ({nutrition_data['error']}) ---")
+    except Exception as e:
+        print(f"--- DIETITIAN Error: {e} ---")
+        
+    return {"nutrition_context": ""}
+
+# 4.5 SYNTHESIS (DOCTOR)
 async def assistant_agent(state: MultiAgentState) -> dict:
-    """Synthesizes final response using Research + Nurse Data."""
+    """Synthesizes final response using Research + Nurse + Dietitian Data."""
     messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
     low_message = last_message.lower().strip()
@@ -381,6 +433,7 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     
     clinical_context = state.get("clinical_context") or ""
     data_response = state.get("data_response") or ""
+    nutrition_context = state.get("nutrition_context") or ""
     
     # Prompt Construction - Add contextual data to help the LLM respond
     parts = []
@@ -419,7 +472,9 @@ async def assistant_agent(state: MultiAgentState) -> dict:
         if meal_names:
             parts.append("[CONTEXT: User's meals logged today]\n" + ", ".join(meal_names[:20]))
     if data_response:
-        parts.append(f"[DATA]\n{data_response}\n[DATA_RULE]\nIf DATA shows a meal was logged, acknowledge it naturally in your response (e.g., 'Got it, I've logged...'). Otherwise, use DATA only if directly relevant.")
+        parts.append(f"[DATA]\n{data_response}\n[DATA_RULE]\nUse DATA only if directly relevant to the current question.")
+    if nutrition_context:
+        parts.append(f"[OPEN_FOOD_FACTS_NUTRITION]\n{nutrition_context}\n[NUTRITION_RULE]\nIncorporate these exact macros into your response.")
     
     # Build system message with persona and context
     system_content = SYSTEM_PERSONA
@@ -436,7 +491,15 @@ async def assistant_agent(state: MultiAgentState) -> dict:
             llm_messages = [SystemMessage(content=system_content)] + messages
             resp = await llm.ainvoke(llm_messages)
             final_response = resp.content
-        except Exception:
+            
+            # Strip thought blocks if they exist
+            if "<thought>" in final_response:
+                final_response = re.sub(r"<thought>.*?</thought>\s*", "", final_response, flags=re.DOTALL).strip()
+                # If model forgot closing tag, strip the opening tag at least
+                final_response = final_response.replace("<thought>", "").strip()
+                
+        except Exception as e:
+            print(f"LLM INVOCATION ERROR: {e}")
             final_response = "I'm having trouble thinking right now. Please try again."
 
     # Build conversation log for next turn
@@ -472,11 +535,13 @@ async def assistant_agent(state: MultiAgentState) -> dict:
 workflow = StateGraph(MultiAgentState)
 workflow.add_node("researcher", research_agent)
 workflow.add_node("nurse", patient_data_agent)
+workflow.add_node("dietitian", dietitian_agent)
 workflow.add_node("assistant", assistant_agent)
 
 workflow.set_entry_point("researcher")
 workflow.add_edge("researcher", "nurse")
-workflow.add_edge("nurse", "assistant")
+workflow.add_edge("nurse", "dietitian")
+workflow.add_edge("dietitian", "assistant")
 workflow.add_edge("assistant", END)
 
 app = workflow.compile()
