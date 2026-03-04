@@ -9,6 +9,7 @@ Uses LangGraph to coordinate multiple specialized agents in a sequential pipelin
 
 import os
 import re
+import math
 from datetime import datetime
 from typing import TypedDict, List, Optional
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -64,6 +65,8 @@ SYSTEM_PERSONA = (
     "2. DO NOT ask the user what they ate today unless they explicitly ask you to log a meal.\n"
     "3. FOCUS on future guidance. Use their past history to inform advice, but don't interrogate them.\n"
     "4. When suggesting meals, avoid recommending any meal already listed in TODAYS_MEALS.\n"
+    "4b. Avoid repeating meal ideas listed in RECENT_RECOMMENDATIONS unless the user explicitly asks to repeat them.\n"
+    "4c. PRIORITIZE VARIETY: Never suggest the same protein or main ingredient twice in a row. If spinach or salmon were just suggested/eaten, pick a completely different protein and vegetable for variety (e.g., if salmon was eaten, suggest chicken or tofu instead; if spinach was eaten, suggest broccoli or kale).\n"
     "5. Prioritize answering the user's current question directly.\n"
     "6. TEMPORAL AWARENESS: Use the 'Current Phase' data. If PRE-OP, STRICTLY ENFORCE the liver shrinking diet (low carb, low fat, high protein) and advise against heavy/cheat meals to reduce surgical risk, and remind them that ANY solid food exceptions are strictly prohibited. If Phase 1 (Clear Liquids) or Phase 2 (Full Liquids), explicitly forbid pureed or solid foods.\n"
     "7. ALLERGIES & DISLIKES: NEVER suggest foods the user is allergic to or dislikes. If they ask for an allergen, explicitly remind them of their allergy and firmly decline.\n"
@@ -85,16 +88,31 @@ SYSTEM_PERSONA = (
 def _calculate_post_op_phase(surgery_date_str: str) -> str:
     if not surgery_date_str or surgery_date_str.lower() == "not specified":
         return ""
-    try:
-        surgery_date = datetime.fromisoformat(surgery_date_str.split('T')[0])
-    except ValueError:
-        return ""
+    surgery_date = None
+    cleaned_date = str(surgery_date_str).strip().split('T')[0]
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
+        try:
+            surgery_date = datetime.strptime(cleaned_date, fmt)
+            break
+        except ValueError:
+            continue
+    if surgery_date is None:
+        try:
+            surgery_date = datetime.fromisoformat(cleaned_date)
+        except ValueError:
+            return ""
 
-    delta = datetime.now() - surgery_date
+    now = datetime.now()
+    delta = now - surgery_date
     weeks = delta.days // 7
+    days_until_surgery = (surgery_date.date() - now.date()).days
     
-    if weeks < 0:
-        return f"PRE-OP (Surgery in {abs(weeks)} weeks)"
+    # Debug: log what we're calculating
+    print(f"DEBUG: Surgery date parsed as {surgery_date.date()}, today is {now.date()}, days_until_surgery={days_until_surgery}, weeks_since={weeks}")
+    
+    if days_until_surgery > 0:
+        weeks_until = max(1, math.ceil(days_until_surgery / 7))
+        return f"PRE-OP (Surgery in {weeks_until} weeks)"
     elif weeks == 0:
         return "PHASE 1: Clear Liquids (Week 1)"
     elif weeks == 1:
@@ -112,6 +130,7 @@ async def generate_and_persist_memory(user_id: str, prev_memory: str, last_messa
         return
     try:
         memory_prompt = (
+            f"Today is {datetime.now().strftime('%A, %B %d, %Y')}.\n"
             f"Produce an UPDATED conversation memory as a JSON object (single JSON value).\n"
             f"Previous memory: {prev_memory}\n"
             f"User: \"{last_message}\"\nAssistant: \"{assistant_response}\"\n"
@@ -202,34 +221,105 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
             user_protein = float(m_user_prot.group(1)) if m_user_prot else 0.0
             user_calories = float(m_user_cal.group(1)) if m_user_cal else 0.0
 
+            # Build conversation history for context (last 4 messages)
+            conversation_context = ""
+            if len(messages) > 1:
+                recent_msgs = messages[-5:-1] if len(messages) >= 5 else messages[:-1]
+                context_lines = []
+                for msg in recent_msgs:
+                    if isinstance(msg, HumanMessage):
+                        context_lines.append(f"User: {msg.content}")
+                    elif isinstance(msg, AIMessage):
+                        context_lines.append(f"Assistant: {msg.content[:150]}")  # Truncate long responses
+                conversation_context = "\n".join(context_lines[-4:])  # Keep last 4 exchanges
+
             nutrition_prompt = f"""
+            Today is {datetime.now().strftime('%A, %B %d, %Y')}.
+            
             Decide if the user is reporting a meal they ALREADY ate today.
             If they are asking a hypothetical question (e.g., "Can I have...", "What if..."), answer NO.
-            If they ALREADY ate it, extract the meal description and estimate protein/calories
-            using normal serving sizes (do not exaggerate).
+            If they ALREADY ate it, extract a summarized food name and estimate protein/calories
+            using realistic single-serving portions (do not exaggerate).
+            
+            IMPORTANT: If the user says "record that", "log that", "log it", or similar references,
+            check the CONVERSATION HISTORY below to find what food was just discussed.
+            
+            For MEAL: Use the specific food name mentioned (e.g., "Greek yogurt", "Grilled chicken breast", "Protein shake").
+            For PROTEIN and CALORIES: Provide realistic estimates based on typical serving sizes.
+            
             Respond in this exact format:
             MEAL_LOG: YES|NO
-            MEAL: [description or empty]
-            PROTEIN: [grams or 0]
-            CALORIES: [kcal or 0]
+            MEAL: [food name]
+            PROTEIN: [realistic grams or 0]
+            CALORIES: [realistic kcal or 0]
 
-            User message: "{last_message}"
+            CONVERSATION HISTORY:
+            {conversation_context if conversation_context else "(No previous conversation)"}
+
+            Current User Message: "{last_message}"
             """
             try:
                 resp = await llm.ainvoke([HumanMessage(content=nutrition_prompt)])
                 text = resp.content.strip()
                 m_log = re.search(r'MEAL_LOG:\s*(YES|NO)', text, re.IGNORECASE)
-                m_meal = re.search(r'MEAL:\s*(.*)', text)
+                m_meal = re.search(r'MEAL:\s*(.*?)(?:\n|$)', text)  # Capture until newline
                 m_prot = re.search(r'PROTEIN:\s*(\d+(?:\.\d+)?)', text)
                 m_cal = re.search(r'CALORIES:\s*(\d+(?:\.\d+)?)', text)
 
                 is_meal_log = bool(m_log and m_log.group(1).upper() == "YES")
                 meal_name = m_meal.group(1).strip() if m_meal else ""
+                has_log_intent = bool(re.search(
+                    r"\b(record|log|track|add)\b|\b(i just ate|i ate|i had|i've eaten|i've had|i have eaten)\b",
+                    low,
+                    re.IGNORECASE
+                ))
+                
+                # Clean up meal name from LLM (remove quotes, brackets, etc.)
+                if meal_name:
+                    meal_name = meal_name.strip('"\'[]')
+                    if meal_name and not meal_name[0].isupper():  # Capitalize if not already
+                        meal_name = meal_name.capitalize()
 
-                # Fallback: derive meal name directly from user message if LLM format is incomplete
+                # Guard against placeholder/non-food outputs
+                invalid_meal_markers = [
+                    "no specific food",
+                    "cannot determine meal",
+                    "unknown",
+                    "not provided",
+                    "n/a",
+                ]
+                if meal_name and any(marker in meal_name.lower() for marker in invalid_meal_markers):
+                    meal_name = ""
+
+                # Fallback: derive meal name from user message or conversation history if LLM format is incomplete
+                reference_words = ["that", "it", "this", "the meal", "the food", "same thing"]
+                is_reference = any(ref in low for ref in reference_words) and ("record" in low or "log" in low)
+                
                 if not meal_name and is_meal_log:
-                    cleaned = re.sub(r"^(i just ate|i ate|i had|i have eaten|i've eaten|i've had|i ate a|i had a|record that i have eaten|record that i ate)\s+", "", low, flags=re.IGNORECASE)
-                    meal_name = cleaned.strip()
+                    # First try: extract from current message
+                    cleaned = re.sub(r"^(i just ate|i ate|i had|log|i have eaten|i've eaten|i've had|i ate a|i had a|record that i have eaten|record that i ate|just ate|just had|record that|log that|record it|log it)\s+", "", low, flags=re.IGNORECASE)
+                    meal_name = cleaned.strip().title() if cleaned.strip() else ""
+                    
+                    # Second try: If user is referencing something, look in conversation history
+                    if is_reference and (not meal_name or meal_name in ["That", "It", "This", "what you said"]) and len(messages) > 1:
+                        # Look for food mentions in recent assistant responses
+                        for msg in reversed(messages[-4:-1]):  # Check last 3 messages before current
+                            if isinstance(msg, AIMessage):
+                                content_lower = msg.content.lower()
+                                # Look for food-related patterns in assistant's response
+                                food_patterns = [
+                                    r'(?:try|have|eat|recommend|suggest|good choice|great option)\s+(?:some\s+)?([a-z\s]+?)(?:\.|,|\?|!|\n)',
+                                    r'(?:like|such as)\s+([a-z\s]+?)(?:\.|,|or|\n)',
+                                ]
+                                for pattern in food_patterns:
+                                    match = re.search(pattern, content_lower)
+                                    if match:
+                                        potential_food = match.group(1).strip()
+                                        if len(potential_food) > 3 and len(potential_food) < 50:  # Reasonable food name length
+                                            meal_name = potential_food.title()
+                                            break
+                            if meal_name and meal_name not in ["That", "It", "This"]:
+                                break
 
                 estimated_protein = float(m_prot.group(1)) if m_prot else 0.0
                 estimated_calories = float(m_cal.group(1)) if m_cal else 0.0
@@ -238,20 +328,36 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
                 protein_grams = user_protein if user_protein > 0 else estimated_protein
                 calories = user_calories if user_calories > 0 else estimated_calories
 
-                # Fill in missing macros with conservative estimates so we never log zeros
+                # Fill in missing macros with conservative estimates based on the other value
                 if protein_grams <= 0 and calories > 0:
-                    protein_grams = max(5.0, min(calories / 20.0, 40.0))
+                    # Estimate protein from calories (~20-25% of calories from protein)
+                    protein_grams = round(max(5.0, min(calories / 18.0, 40.0)), 1)
                 if calories <= 0 and protein_grams > 0:
-                    calories = max(120.0, min(protein_grams * 12.0, 600.0))
+                    # Estimate calories from protein (protein = 4 cal/g, plus some fat/carbs)
+                    calories = round(max(100.0, min(protein_grams * 10.0, 600.0)), 0)
                 if protein_grams <= 0 and calories <= 0:
-                    protein_grams = 15.0
-                    calories = 250.0
+                    # Conservative defaults for unknown meal
+                    protein_grams = 12.0
+                    calories = 200.0
 
-                # Clamp to reasonable single-meal ranges to avoid exaggerated values
-                protein_grams = min(max(protein_grams, 0.0), 60.0)
-                calories = min(max(calories, 0.0), 900.0)
+                # Clamp to reasonable single-meal ranges for bariatric patients
+                protein_grams = round(min(max(protein_grams, 0.0), 60.0), 1)
+                calories = round(min(max(calories, 0.0), 900.0), 0)
 
-                if is_meal_log and meal_name:
+                if is_meal_log and meal_name and has_log_intent:
+                    # Avoid duplicate consecutive logs of the same meal with same macros
+                    todays_meals = profile.get("todays_meals", []) if isinstance(profile, dict) else []
+                    if todays_meals:
+                        last_logged = todays_meals[-1]
+                        last_food = str(last_logged.get("food", "")).strip().lower()
+                        last_protein = float(last_logged.get("protein", 0) or 0)
+                        last_calories = float(last_logged.get("calories", 0) or 0)
+                        same_meal = last_food == meal_name.strip().lower()
+                        same_macros = abs(last_protein - protein_grams) <= 0.1 and abs(last_calories - calories) <= 1.0
+                        if same_meal and same_macros:
+                            data_response = f"ACTION_SKIPPED: '{meal_name}' is already logged for today."
+                            return {"data_response": data_response}
+
                     result = await record_meal.ainvoke({
                         "user_id": user_id,
                         "meal_name": meal_name,
@@ -369,6 +475,11 @@ async def assistant_agent(state: MultiAgentState) -> dict:
     
     # Prompt Construction - Add contextual data to help the LLM respond
     parts = []
+    recent_recommendations = []
+    
+    # Add current date so LLM knows what day it is
+    current_date = datetime.now().strftime("%A, %B %d, %Y")
+    parts.append(f"[CONTEXT] Today's date: {current_date}")
     
     # Clinical guidelines
     if clinical_context:
@@ -393,16 +504,45 @@ async def assistant_agent(state: MultiAgentState) -> dict:
         ]
     )
 
+    if include_todays_meals and convo_excerpt and convo_excerpt != "[]":
+        try:
+            convo = json.loads(convo_excerpt)
+            recent_assistant = list(convo.get("recent_assistant_responses", []))
+            recent_recommendations = [msg for msg in recent_assistant[-3:] if isinstance(msg, str) and msg.strip()]
+        except Exception:
+            recent_recommendations = []
+    
+    recently_suggested_ingredients = set()
+    if recent_recommendations:
+        for rec in recent_recommendations:
+            keywords = re.findall(r'\b(chicken|salmon|tilapia|cod|turkey|beef|tofu|eggs?|greek yogurt|yogurt|broccoli|spinach|kale|asparagus|carrots?|zucchini|lettuce|beans?|lentils|rice|quinoa)\b', rec.lower())
+            recently_suggested_ingredients.update(keywords)
+
     todays_meals = profile.get("todays_meals") or []
     if include_todays_meals and todays_meals:
         meal_names = []
+        primary_ingredients = set()
         for meal in todays_meals:
+            meal_str = ""
             if isinstance(meal, dict) and meal.get("food"):
-                meal_names.append(str(meal.get("food")))
+                meal_str = str(meal.get("food"))
             elif isinstance(meal, str):
-                meal_names.append(meal)
+                meal_str = meal
+            if meal_str:
+                meal_names.append(meal_str)
+                # Extract key ingredients (proteins/vegetables mentioned in the meal name)
+                keywords = re.findall(r'\b(chicken|salmon|tilapia|cod|turkey|beef|tofu|eggs?|greek yogurt|yogurt|broccoli|spinach|kale|asparagus|carrots?|zucchini|lettuce|beans?|lentils|rice|quinoa)\b', meal_str.lower())
+                primary_ingredients.update(keywords)
         if meal_names:
-            parts.append("[TODAYS_MEALS]\n" + "\n".join(meal_names[:20]))
+            meal_context = "[TODAYS_MEALS]\n" + "\n".join(meal_names[:20])
+            if primary_ingredients:
+                meal_context += f"\n[PRIMARY_INGREDIENTS_TO_AVOID_REPEATING]\n" + ", ".join(sorted(primary_ingredients))
+            parts.append(meal_context)
+    if recent_recommendations:
+        rec_context = "[RECENT_RECOMMENDATIONS]\n" + "\n---\n".join(recent_recommendations)
+        if recently_suggested_ingredients:
+            rec_context += f"\n[RECENTLY_SUGGESTED_INGREDIENTS_AVOID]\n" + ", ".join(sorted(recently_suggested_ingredients))
+        parts.append(rec_context)
     if data_response:
         parts.append(f"[DATA]\n{data_response}\n[DATA_RULE]\nUse DATA only if directly relevant to the current question.")
     if nutrition_context:
