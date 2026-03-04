@@ -66,7 +66,7 @@ SYSTEM_PERSONA = (
     "3. FOCUS on future guidance. Use their past history to inform advice, but don't interrogate them.\n"
     "4. When suggesting meals, avoid recommending any meal already listed in TODAYS_MEALS.\n"
     "4b. Avoid repeating meal ideas listed in RECENT_RECOMMENDATIONS unless the user explicitly asks to repeat them.\n"
-    "4c. PRIORITIZE VARIETY: Never suggest the same protein or main ingredient twice in a row. If spinach or salmon were just suggested/eaten, pick a completely different protein and vegetable for variety (e.g., if salmon was eaten, suggest chicken or tofu instead; if spinach was eaten, suggest broccoli or kale).\n"
+    "4c. PRIORITIZE VARIETY: Never suggest the same protein or main ingredient twice in a row. If spinach or salmon were just suggested/eaten, pick a completely different protein and vegetable for variety (e.g., if salmon was eaten, suggest chicken or tofu instead; if spinach was eaten, suggest broccoli or kale). ALWAYS check [PRIMARY_INGREDIENTS_TO_AVOID_REPEATING] and [RECENTLY_SUGGESTED_INGREDIENTS_AVOID] and suggest something from a completely different category.\n"
     "5. Prioritize answering the user's current question directly.\n"
     "6. TEMPORAL AWARENESS: Use the 'Current Phase' data. If PRE-OP, STRICTLY ENFORCE the liver shrinking diet (low carb, low fat, high protein) and advise against heavy/cheat meals to reduce surgical risk, and remind them that ANY solid food exceptions are strictly prohibited. If Phase 1 (Clear Liquids) or Phase 2 (Full Liquids), explicitly forbid pureed or solid foods.\n"
     "7. ALLERGIES & DISLIKES: NEVER suggest foods the user is allergic to or dislikes. If they ask for an allergen, explicitly remind them of their allergy and firmly decline.\n"
@@ -76,9 +76,10 @@ SYSTEM_PERSONA = (
     "11. VEGAN/VEGETARIAN CONSTRAINTS: Ensure NO meat/poultry products (like chicken or beef broth) are suggested to Vegetarians or Vegans. Standard diets have no meat restrictions.\n"
     "12. TEXTURE SAFETY (NUTS/SEEDS/CRUNCHY): Nuts, seeds, and any crunchy foods (like popcorn or chips) MUST be avoided in Phase 1, Phase 2, and PRE-OP. In Phase 3, nuts/seeds MUST be ground or pureed. Whole nuts/seeds and crunchy foods are entirely forbidden until Phase 4 or Maintenance.\n"
     "13. EMOTIONAL SUPPORT & PLATEAUS: If the user is frustrated by a weight loss stall or plateau, explicitly validate their feelings, explain that plateaus are a normal part of the bariatric journey, AND YOU MUST EXPLICITLY ASK THEM 'What do you usually consider comfort food?' BEFORE offering any specific alternatives or food suggestions in your response. Wait for their reply.\n"
-    "14. HIGH-PROTEIN FOCUS: When offering alternatives to unhealthy cravings or comfort foods, ALWAYS prioritize high-protein bariatric-friendly options (e.g., clear protein drinks in Phase 1, pureed high-protein dishes in Phase 3).\n"
-    "15. CALORIE TARGETS: In early Phase 3 (Pureed/Soft), daily calorie goals are typically around 600-800. In Phase 4/5, it increases to 800-1200 depending on activity level. Do not push patients to 1000+ calories too early.\n"
-    "16. OUT-OF-SCOPE QUERIES: You are strictly a Bariatric Care Assistant. If the user asks general life questions, coding questions, complex medical diagnostics unrelated to bariatric diet protocols, or political questions, politely decline and remind them of your purpose."
+    "14. MEAL LOGGING: When [DATA] shows ACTION_TAKEN or ACTION_FAILED for a meal, simply confirm what was logged WITHOUT mentioning Current Phase, Diet info, or other context. Just acknowledge the action clearly and move forward.\n"
+    "15. HIGH-PROTEIN FOCUS: When offering alternatives to unhealthy cravings or comfort foods, ALWAYS prioritize high-protein bariatric-friendly options (e.g., clear protein drinks in Phase 1, pureed high-protein dishes in Phase 3).\n"
+    "16. CALORIE TARGETS: In early Phase 3 (Pureed/Soft), daily calorie goals are typically around 600-800. In Phase 4/5, it increases to 800-1200 depending on activity level. Do not push patients to 1000+ calories too early.\n"
+    "17. OUT-OF-SCOPE QUERIES: You are strictly a Bariatric Care Assistant. If the user asks general life questions, coding questions, complex medical diagnostics unrelated to bariatric diet protocols, or political questions, politely decline and remind them of your purpose."
 )
 
 # ==========================================
@@ -90,9 +91,12 @@ def _calculate_post_op_phase(surgery_date_str: str) -> str:
         return ""
     surgery_date = None
     cleaned_date = str(surgery_date_str).strip().split('T')[0]
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d", "%m-%d-%y", "%m/%d/%y"):
         try:
             surgery_date = datetime.strptime(cleaned_date, fmt)
+            # Handle 2-digit years (ensure 2000s)
+            if surgery_date.year < 2000:
+                surgery_date = surgery_date.replace(year=surgery_date.year + 2000)
             break
         except ValueError:
             continue
@@ -108,7 +112,7 @@ def _calculate_post_op_phase(surgery_date_str: str) -> str:
     days_until_surgery = (surgery_date.date() - now.date()).days
     
     # Debug: log what we're calculating
-    print(f"DEBUG: Surgery date parsed as {surgery_date.date()}, today is {now.date()}, days_until_surgery={days_until_surgery}, weeks_since={weeks}")
+    print(f"DEBUG: Surgery='{surgery_date_str}' -> {surgery_date.date()}, Today={now.date()}, days_until={days_until_surgery}, weeks_post={weeks}")
     
     if days_until_surgery > 0:
         weeks_until = max(1, math.ceil(days_until_surgery / 7))
@@ -389,11 +393,15 @@ async def patient_data_agent(state: MultiAgentState) -> dict:
                 data_response = f"ACTION_FAILED: Classification error {e}"
 
     # 2. Data Context (Always provide if available)
+    # Skip context if a meal was just logged - keep response simple
+    if data_response.startswith("ACTION_TAKEN:") or data_response.startswith("ACTION_FAILED:") or data_response.startswith("ACTION_SKIPPED:"):
+        return {"data_response": data_response}
+    
     parts = []
     if profile:
         surg_date = profile.get('surgery_date', 'N/A')
         parts.append(f"Surgery Date: {surg_date}")
-        if surg_date != 'N/A':
+        if surg_date != 'N/A' and surg_date:
             phase = _calculate_post_op_phase(surg_date)
             parts.append(f"Current Phase: {phase}")
         parts.append(f"Diet: {profile.get('diet_type', 'N/A')}")
@@ -574,11 +582,7 @@ async def assistant_agent(state: MultiAgentState) -> dict:
             print(f"LLM INVOCATION ERROR: {e}")
             final_response = "I'm having trouble thinking right now. Please try again."
 
-    # Confirmation message when a meal was logged
-    if data_response.startswith("ACTION_TAKEN:"):
-        confirmation = data_response.replace("ACTION_TAKEN:", "Recorded.").strip()
-        if confirmation.lower() not in final_response.lower():
-            final_response = f"{confirmation}\n\n{final_response}" if final_response else confirmation
+    # Don't add separate confirmation for meal logging - let AI handle it from data_response
 
     # Build conversation log for next turn
     try:
