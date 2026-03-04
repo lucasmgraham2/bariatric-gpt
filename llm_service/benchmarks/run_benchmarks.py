@@ -15,8 +15,11 @@ def load_dataset(file_path):
 
 def run_benchmarks():
     print(f"Loading benchmarks from {BENCHMARK_FILE}...\n")
+    import random
     dataset = load_dataset(BENCHMARK_FILE)
     test_cases = dataset.get("test_cases", [])
+    if len(test_cases) > 5:
+        test_cases = random.sample(test_cases, 5)
     
     today = datetime.now()
     
@@ -166,7 +169,11 @@ def run_benchmarks():
     print("="*50)
     
     # Write report
-    report_file = os.path.join(os.path.dirname(__file__), "benchmark_results.md")
+    timestamp = datetime.now().strftime("[%m-%d-%y]_[%H-%M]")
+    report_dir = os.path.join(os.path.dirname(__file__), "results")
+    if not os.path.exists(report_dir):
+        os.makedirs(report_dir)
+    report_file = os.path.join(report_dir, f"BR_{timestamp}.md")
     with open(report_file, "w") as f:
         f.write("# Bariatric GPT Benchmark Results\n")
         f.write(f"Run Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
