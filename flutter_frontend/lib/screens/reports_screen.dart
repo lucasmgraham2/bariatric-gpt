@@ -13,26 +13,6 @@ class ReportsScreen extends StatelessWidget {
         icon: Icons.fitness_center,
         screen: const ProteinReportScreen(),
       ),
-      _ReportTile(
-        title: 'Weekly Progress',
-        description: 'Summaries of weight, activity, and adherence.',
-        icon: Icons.show_chart,
-      ),
-      _ReportTile(
-        title: 'Nutrition Insights',
-        description: 'Meals, macro balance, and allergy compliance.',
-        icon: Icons.restaurant_menu,
-      ),
-      _ReportTile(
-        title: 'Engagement',
-        description: 'Assistant interactions and follow-ups.',
-        icon: Icons.chat_bubble_outline,
-      ),
-      _ReportTile(
-        title: 'Export',
-        description: 'Download PDFs or share with care teams.',
-        icon: Icons.file_download_outlined,
-      ),
     ];
 
     return SafeArea(
