@@ -66,3 +66,6 @@ flutter_frontend/android/app/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Benchmark Results
+llm_service/benchmarks/results/
